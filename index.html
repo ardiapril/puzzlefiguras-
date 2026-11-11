@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v4 -->
+<!-- figuras v5 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -133,6 +133,14 @@
     inset: 6%;
     z-index: 1;
     filter: drop-shadow(0 2px 0 rgba(0,0,0,.28)) drop-shadow(0 3px 4px rgba(0,0,0,.25));
+  }
+  .cell.stone {
+    background:
+      radial-gradient(circle at 30% 28%, rgba(255,255,255,.35) 0 12%, transparent 13%),
+      radial-gradient(circle at 68% 62%, rgba(0,0,0,.18) 0 10%, transparent 11%),
+      radial-gradient(circle at 35% 72%, rgba(0,0,0,.14) 0 8%, transparent 9%),
+      linear-gradient(160deg, #a7adb9 0%, #7b818e 60%, #5f6470 100%);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.3), 0 2px 0 rgba(0,0,0,.25);
   }
   .cell.preview-ok {
     background: var(--ok);
@@ -357,6 +365,35 @@
     [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]
   ];
 
+  const STONE = "stone";
+  const MIN_GROUP = 3;
+  const STONE_PTS = 20;
+  function isStone(v) { return !!v && v.symbol === STONE; }
+  function stonesNextTo(board, cells) {
+    const out = [], seen = Object.create(null);
+    const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (let i = 0; i < cells.length; i++) {
+      for (let d = 0; d < 4; d++) {
+        const r = cells[i].r + dirs[d][0], c = cells[i].c + dirs[d][1];
+        const k = r + "," + c;
+        if (inBounds(r, c) && !seen[k] && isStone(board[r][c])) { seen[k] = 1; out.push({ r: r, c: c }); }
+      }
+    }
+    return out;
+  }
+  function addStones(board, n, rng) {
+    const rnd = rng || Math.random;
+    const empty = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (!board[r][c]) empty.push({ r: r, c: c });
+    const added = [];
+    for (let k = 0; k < n && empty.length > 6; k++) {
+      const i = Math.floor(rnd() * empty.length);
+      const p = empty.splice(i, 1)[0];
+      board[p.r][p.c] = { symbol: STONE, color: "#8a8f9c" };
+      added.push(p);
+    }
+    return added;
+  }
   function makeBoard() {
     return Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
   }
@@ -489,7 +526,7 @@
   }
   function floodGroup(board, sr, sc, visited) {
     const start = board[sr][sc];
-    if (!start) return [];
+    if (!start || start.symbol === STONE) return [];
     const sym = start.symbol;
     const cells = [];
     const stack = [[sr, sc]];
@@ -518,7 +555,7 @@
       const r = seeds[i].r, c = seeds[i].c;
       if (!inBounds(r, c) || !board[r][c] || visited[r][c]) continue;
       const g = floodGroup(board, r, c, visited);
-      if (g.length < 2) continue;
+      if (g.length < MIN_GROUP) continue;
       let hasNew = false, hasOld = false;
       for (let k = 0; k < g.length; k++) {
         if (seedSet[g[k].r + "," + g[k].c]) hasNew = true;
@@ -584,7 +621,10 @@
     const matchCells = uniqueCells(groups.reduce(function (a, g) { return a.concat(g); }, []));
     let matchPts = 0;
     for (let i = 0; i < groups.length; i++) matchPts += matchScore(groups[i].length);
+    const stoneCells = stonesNextTo(board, matchCells);
+    matchPts += stoneCells.length * STONE_PTS;
     clearCells(board, matchCells);
+    clearCells(board, stoneCells);
     const lines = findFullLines(board);
     const lineCells = cellsFromLines(lines);
     const nLines = lines.rows.length + lines.cols.length;
@@ -595,6 +635,7 @@
       placed: placed,
       groups: groups,
       matchCells: matchCells,
+      stoneCells: stoneCells,
       lines: lines,
       lineCells: lineCells,
       scores: { place: placePts, match: matchPts, line: linePts, total: placePts + matchPts + linePts }
@@ -624,7 +665,9 @@
     findMatchGroups: findMatchGroups, matchScore: matchScore, placeScore: placeScore,
     findFullLines: findFullLines, lineScore: lineScore, cellsFromLines: cellsFromLines,
     uniqueCells: uniqueCells, clearCells: clearCells, resolvePlacement: resolvePlacement,
-    pieceFits: pieceFits, anyFits: anyFits
+    pieceFits: pieceFits, anyFits: anyFits,
+    STONE: STONE, MIN_GROUP: MIN_GROUP, STONE_PTS: STONE_PTS, isStone: isStone,
+    stonesNextTo: stonesNextTo, addStones: addStones
   };
   root.FigurasLogic = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -694,7 +737,9 @@
     el.innerHTML = "";
     if (preview === "ok") el.classList.add("preview-ok");
     else if (preview === "bad") el.classList.add("preview-bad");
-    if (v) {
+    if (v && v.symbol === L.STONE) {
+      el.classList.add("stone");
+    } else if (v) {
       el.classList.add("filled");
       el.innerHTML = svgSymbol(v.symbol, COLOR[v.symbol] || v.color);
     }
@@ -840,6 +885,8 @@
   function maybeRefill() {
     if (tray.every(function (p) { return !p; })) {
       tray = L.generateTrio();
+      L.addStones(board, score >= 1500 ? 2 : 1);
+      renderBoard();
     }
     renderTray();
     if (!L.anyFits(board, tray)) endGame();
@@ -891,10 +938,13 @@
     const matchCells = L.uniqueCells(groups.reduce(function (a, g) { return a.concat(g); }, []));
     let matchPts = 0;
     for (let i = 0; i < groups.length; i++) matchPts += L.matchScore(groups[i].length);
+    const stoneCells = L.stonesNextTo(board, matchCells);
+    matchPts += stoneCells.length * L.STONE_PTS;
 
     if (matchCells.length) {
-      for (let i = 0; i < matchCells.length; i++) {
-        const p = matchCells[i];
+      const popCells = matchCells.concat(stoneCells);
+      for (let i = 0; i < popCells.length; i++) {
+        const p = popCells[i];
         cellEls[p.r][p.c].classList.add("pop");
       }
       const mid = matchCells[Math.floor(matchCells.length / 2)];
@@ -902,6 +952,7 @@
       beep("clear");
       await sleep(280);
       L.clearCells(board, matchCells);
+      L.clearCells(board, stoneCells);
       setScore(score + matchPts);
       renderBoard();
     }
