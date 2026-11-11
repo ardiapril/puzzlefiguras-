@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v3 -->
+<!-- figuras v4 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -442,8 +442,25 @@
   function generatePiece(rng) {
     const shape = randomShape(rng);
     const rnd = rng || Math.random;
-    const sym = SYMBOLS[Math.floor(rnd() * SYMBOLS.length)];
-    return makePiece(shape, shape.map(function () { return sym; }));
+    const a = SYMBOLS[Math.floor(rnd() * SYMBOLS.length)];
+    const others = SYMBOLS.filter(function (x) { return x !== a; });
+    const b = others[Math.floor(rnd() * others.length)];
+    const n = shape.length;
+    if (n === 1) return makePiece(shape, [a]);
+    // dividir la pieza en dos mitades unidas: recorrido desde una punta
+    const nb = function (i, j) { return Math.abs(shape[i][0] - shape[j][0]) + Math.abs(shape[i][1] - shape[j][1]) === 1; };
+    const deg = shape.map(function (_, i) { let d = 0; for (let j = 0; j < n; j++) if (i !== j && nb(i, j)) d++; return d; });
+    const minDeg = Math.min.apply(null, deg);
+    const ends = []; for (let i = 0; i < n; i++) if (deg[i] === minDeg) ends.push(i);
+    const start = ends[Math.floor(rnd() * ends.length)];
+    const order = [start], seen = {}; seen[start] = 1;
+    for (let k = 0; k < order.length; k++) {
+      for (let j = 0; j < n; j++) if (!seen[j] && nb(order[k], j)) { seen[j] = 1; order.push(j); }
+    }
+    const half = rnd() < 0.5 ? Math.floor(n / 2) : Math.ceil(n / 2);
+    const syms = Array(n);
+    for (let k = 0; k < n; k++) syms[order[k]] = k < half ? a : b;
+    return makePiece(shape, syms);
   }
   function generateTrio(rng) {
     return [generatePiece(rng), generatePiece(rng), generatePiece(rng)];
