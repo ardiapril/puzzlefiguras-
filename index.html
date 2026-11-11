@@ -904,7 +904,7 @@
     };
   }
   // ---- Desbloqueo por puntos ----
-  const GATES = { stones: 100, vines: 700, wind: 1000 };
+  const GATES = { stones: 900, vines: 1900, wind: 2900 };
   function stonesForScore(score) { return score < GATES.stones ? 0 : score >= 1500 ? 2 : 1; }
   // Piedras y enredaderas al llegar una tanda nueva, según los puntos
   function spawnForTrio(board, score, rng) {
@@ -1300,7 +1300,7 @@
     renderTray();
   }
 
-  // Tanda nueva: piedras (≥100), enredadera (≥700) y, a veces, ráfaga de viento (≥1000)
+  // Tanda nueva: piedras (≥900), enredadera (≥1900) y, a veces, ráfaga de viento (≥2900)
   async function maybeRefill() {
     if (tray.every(function (p) { return !p; })) {
       tray = L.generateTrio();
