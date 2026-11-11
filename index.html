@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v5 -->
+<!-- figuras v6 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -141,6 +141,43 @@
       radial-gradient(circle at 35% 72%, rgba(0,0,0,.14) 0 8%, transparent 9%),
       linear-gradient(160deg, #a7adb9 0%, #7b818e 60%, #5f6470 100%);
     box-shadow: inset 0 2px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.3), 0 2px 0 rgba(0,0,0,.25);
+  }
+  .cell.vine {
+    background:
+      radial-gradient(circle at 30% 28%, rgba(255,255,255,.18) 0 14%, transparent 15%),
+      linear-gradient(160deg, #2f7d3e 0%, #1f5a2c 60%, #164421 100%);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.22), inset 0 -3px 0 rgba(0,0,0,.3), 0 2px 0 rgba(0,0,0,.25);
+  }
+  .cell .vinesvg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+    filter: drop-shadow(0 1.5px 0 rgba(0,0,0,.35));
+  }
+  .cell.vine .vinesvg { z-index: 1; }
+  .cell.trapped {
+    box-shadow: inset 0 0 0 2.5px #2fae4a, inset 0 0 10px rgba(47,174,74,.55);
+  }
+  .cell.vinegrow .vinesvg { animation: vinegrow .32s ease-out; }
+  .cell.vinecatch { animation: vinecatch .38s ease-out; }
+  .cell.vinecatch .vinesvg { animation: vinegrow .38s ease-out; }
+  .cell.freed .vinesvg { animation: vinefree .3s ease-in forwards; }
+  @keyframes vinegrow {
+    0% { transform: scale(.2) rotate(-40deg); opacity: 0; }
+    70% { transform: scale(1.12) rotate(4deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  @keyframes vinecatch {
+    0% { filter: brightness(1); }
+    40% { filter: brightness(1.6) saturate(1.4); }
+    100% { filter: brightness(1); }
+  }
+  @keyframes vinefree {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.5) rotate(25deg); opacity: 0; }
   }
   .cell.preview-ok {
     background: var(--ok);
@@ -368,7 +405,105 @@
   const STONE = "stone";
   const MIN_GROUP = 3;
   const STONE_PTS = 20;
+  const VINE = "vine";
+  const VINE_PTS = 20;
+  const DIRS4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
   function isStone(v) { return !!v && v.symbol === STONE; }
+  function isVine(v) { return !!v && v.symbol === VINE; }
+  function isBlocker(v) { return isStone(v) || isVine(v); }
+  function isFigure(v) { return !!v && !isBlocker(v); }
+  function vinesNextTo(board, cells) {
+    const out = [], seen = Object.create(null);
+    for (let i = 0; i < cells.length; i++) {
+      for (let d = 0; d < 4; d++) {
+        const r = cells[i].r + DIRS4[d][0], c = cells[i].c + DIRS4[d][1];
+        const k = r + "," + c;
+        if (inBounds(r, c) && !seen[k] && isVine(board[r][c])) { seen[k] = 1; out.push({ r: r, c: c }); }
+      }
+    }
+    return out;
+  }
+  function countVines(board) {
+    let n = 0;
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (isVine(board[r][c])) n++;
+    return n;
+  }
+  // Añade 1 enredadera libre si no hay ninguna y quedan más de 6 huecos
+  function addVine(board, rng) {
+    if (countVines(board) > 0) return null;
+    const rnd = rng || Math.random;
+    const empty = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (!board[r][c]) empty.push({ r: r, c: c });
+    if (empty.length <= 6) return null;
+    const p = empty[Math.floor(rnd() * empty.length)];
+    board[p.r][p.c] = { symbol: VINE, color: "#2fae4a" };
+    return p;
+  }
+  // Cada enredadera libre da un paso hacia la figura libre más cercana (o la atrapa si está al lado)
+  function moveVines(board) {
+    const vines = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (isVine(board[r][c])) vines.push({ r: r, c: c });
+    const moves = [];
+    const isTarget = function (r, c) { const v = board[r][c]; return isFigure(v) && !v.trapped; };
+    for (let i = 0; i < vines.length; i++) {
+      const v = vines[i];
+      if (!isVine(board[v.r][v.c])) continue;
+      // ¿figura al lado? la atrapa
+      let caught = null;
+      for (let d = 0; d < 4 && !caught; d++) {
+        const r = v.r + DIRS4[d][0], c = v.c + DIRS4[d][1];
+        if (inBounds(r, c) && isTarget(r, c)) caught = { r: r, c: c };
+      }
+      if (caught) {
+        board[v.r][v.c] = null;
+        board[caught.r][caught.c].trapped = true;
+        moves.push({ from: { r: v.r, c: v.c }, to: null, captured: caught });
+        continue;
+      }
+      // BFS por huecos vacíos hasta una casilla pegada a una figura libre
+      const prev = Array.from({ length: SIZE }, function () { return Array(SIZE).fill(null); });
+      const seen = Array.from({ length: SIZE }, function () { return Array(SIZE).fill(false); });
+      seen[v.r][v.c] = true;
+      const q = [{ r: v.r, c: v.c }];
+      let goal = null;
+      for (let h = 0; h < q.length && !goal; h++) {
+        const cur = q[h];
+        for (let d = 0; d < 4; d++) {
+          const r = cur.r + DIRS4[d][0], c = cur.c + DIRS4[d][1];
+          if (!inBounds(r, c) || seen[r][c] || board[r][c]) continue;
+          seen[r][c] = true;
+          prev[r][c] = cur;
+          let near = false;
+          for (let e = 0; e < 4; e++) {
+            const rr = r + DIRS4[e][0], cc = c + DIRS4[e][1];
+            if (inBounds(rr, cc) && isTarget(rr, cc)) { near = true; break; }
+          }
+          if (near) { goal = { r: r, c: c }; break; }
+          q.push({ r: r, c: c });
+        }
+      }
+      if (!goal) continue;
+      let step = goal;
+      while (prev[step.r][step.c] && !(prev[step.r][step.c].r === v.r && prev[step.r][step.c].c === v.c)) step = prev[step.r][step.c];
+      board[step.r][step.c] = board[v.r][v.c];
+      board[v.r][v.c] = null;
+      moves.push({ from: { r: v.r, c: v.c }, to: { r: step.r, c: step.c }, captured: null });
+    }
+    return moves;
+  }
+  // Golpea casillas: las figuras atrapadas pierden la enredadera; el resto se borra
+  function hitCells(board, cells) {
+    const broken = [], freed = [];
+    for (let i = 0; i < cells.length; i++) {
+      const p = cells[i];
+      if (!inBounds(p.r, p.c)) continue;
+      const v = board[p.r][p.c];
+      if (!v) continue;
+      if (v.trapped) { v.trapped = false; freed.push({ r: p.r, c: p.c }); }
+      else { board[p.r][p.c] = null; broken.push({ r: p.r, c: p.c }); }
+    }
+    return { broken: broken, freed: freed };
+  }
   function stonesNextTo(board, cells) {
     const out = [], seen = Object.create(null);
     const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
@@ -526,7 +661,7 @@
   }
   function floodGroup(board, sr, sc, visited) {
     const start = board[sr][sc];
-    if (!start || start.symbol === STONE) return [];
+    if (!start || isBlocker(start)) return [];
     const sym = start.symbol;
     const cells = [];
     const stack = [[sr, sc]];
@@ -614,31 +749,59 @@
       if (inBounds(p.r, p.c)) board[p.r][p.c] = null;
     }
   }
-  function resolvePlacement(board, piece, r, c) {
-    const placed = placePiece(board, piece, r, c);
-    if (!placed) return null;
+  // Fase de grupos: devuelve qué se rompe y cuántos puntos da (sin tocar el tablero)
+  function evalMatches(board, placed) {
     const groups = findMatchGroups(board, placed);
     const matchCells = uniqueCells(groups.reduce(function (a, g) { return a.concat(g); }, []));
-    let matchPts = 0;
-    for (let i = 0; i < groups.length; i++) matchPts += matchScore(groups[i].length);
+    let pts = 0;
+    for (let i = 0; i < groups.length; i++) pts += matchScore(groups[i].length);
     const stoneCells = stonesNextTo(board, matchCells);
-    matchPts += stoneCells.length * STONE_PTS;
-    clearCells(board, matchCells);
-    clearCells(board, stoneCells);
+    const vineCells = vinesNextTo(board, matchCells);
+    const trappedCells = matchCells.filter(function (p) { return board[p.r][p.c] && board[p.r][p.c].trapped; });
+    pts += stoneCells.length * STONE_PTS + vineCells.length * VINE_PTS + trappedCells.length * VINE_PTS;
+    return { groups: groups, matchCells: matchCells, stoneCells: stoneCells, vineCells: vineCells, trappedCells: trappedCells, pts: pts };
+  }
+  function applyMatches(board, m) {
+    const hit = hitCells(board, m.matchCells);
+    clearCells(board, m.stoneCells);
+    clearCells(board, m.vineCells);
+    return hit;
+  }
+  // Fase de líneas
+  function evalLines(board) {
     const lines = findFullLines(board);
     const lineCells = cellsFromLines(lines);
     const nLines = lines.rows.length + lines.cols.length;
-    const linePts = lineScore(nLines);
-    clearCells(board, lineCells);
+    let extra = 0;
+    const trappedCells = [], vineCells = [];
+    for (let i = 0; i < lineCells.length; i++) {
+      const v = board[lineCells[i].r][lineCells[i].c];
+      if (isVine(v)) vineCells.push(lineCells[i]);
+      else if (v && v.trapped) trappedCells.push(lineCells[i]);
+    }
+    extra = (vineCells.length + trappedCells.length) * VINE_PTS;
+    return { lines: lines, lineCells: lineCells, nLines: nLines, trappedCells: trappedCells, vineCells: vineCells, pts: lineScore(nLines) + extra };
+  }
+  function resolvePlacement(board, piece, r, c) {
+    const placed = placePiece(board, piece, r, c);
+    if (!placed) return null;
+    const m = evalMatches(board, placed);
+    const mHit = applyMatches(board, m);
+    const l = evalLines(board);
+    const lHit = hitCells(board, l.lineCells);
+    const vineMoves = moveVines(board);
     const placePts = placeScore(placed.length);
     return {
       placed: placed,
-      groups: groups,
-      matchCells: matchCells,
-      stoneCells: stoneCells,
-      lines: lines,
-      lineCells: lineCells,
-      scores: { place: placePts, match: matchPts, line: linePts, total: placePts + matchPts + linePts }
+      groups: m.groups,
+      matchCells: m.matchCells,
+      stoneCells: m.stoneCells,
+      vineCells: m.vineCells,
+      freed: mHit.freed.concat(lHit.freed),
+      lines: l.lines,
+      lineCells: l.lineCells,
+      vineMoves: vineMoves,
+      scores: { place: placePts, match: m.pts, line: l.pts, total: placePts + m.pts + l.pts }
     };
   }
   function pieceFits(board, piece) {
@@ -667,7 +830,10 @@
     uniqueCells: uniqueCells, clearCells: clearCells, resolvePlacement: resolvePlacement,
     pieceFits: pieceFits, anyFits: anyFits,
     STONE: STONE, MIN_GROUP: MIN_GROUP, STONE_PTS: STONE_PTS, isStone: isStone,
-    stonesNextTo: stonesNextTo, addStones: addStones
+    stonesNextTo: stonesNextTo, addStones: addStones,
+    VINE: VINE, VINE_PTS: VINE_PTS, isVine: isVine, isBlocker: isBlocker, isFigure: isFigure,
+    vinesNextTo: vinesNextTo, countVines: countVines, addVine: addVine, moveVines: moveVines,
+    hitCells: hitCells, evalMatches: evalMatches, applyMatches: applyMatches, evalLines: evalLines
   };
   root.FigurasLogic = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -713,6 +879,33 @@
     return '<svg class="sym" viewBox="0 0 24 24" aria-hidden="true">' + shape + '</svg>';
   }
 
+  // Enredadera dibujada en SVG (tallo curvo + hojas)
+  function leaf(x, y, rot, s) {
+    return '<g transform="translate(' + x + ' ' + y + ') rotate(' + rot + ') scale(' + (s || 1) + ')">' +
+      '<path d="M0 0 C 2.2 -2.6 6 -2.6 7.4 0 C 6 2.6 2.2 2.6 0 0 Z" fill="#3cc457" stroke="#1d7a33" stroke-width=".7"/>' +
+      '<path d="M0.6 0 L6.4 0" stroke="#1d7a33" stroke-width=".5" stroke-linecap="round"/></g>';
+  }
+  function svgVine(trapped) {
+    let g;
+    if (trapped) {
+      // enredadera enroscada encima de la figura
+      g = '<path d="M1 21 C 6 15, 9 19, 12 13 S 18 7, 23 3" fill="none" stroke="#14632a" stroke-width="3.6" stroke-linecap="round"/>' +
+          '<path d="M1 21 C 6 15, 9 19, 12 13 S 18 7, 23 3" fill="none" stroke="#3cc457" stroke-width="2" stroke-linecap="round"/>' +
+          '<path d="M2 4 C 7 8, 9 5, 12 11 S 18 17, 22 21" fill="none" stroke="#14632a" stroke-width="3" stroke-linecap="round"/>' +
+          '<path d="M2 4 C 7 8, 9 5, 12 11 S 18 17, 22 21" fill="none" stroke="#5bd872" stroke-width="1.5" stroke-linecap="round"/>' +
+          leaf(5, 17, -60, 0.8) + leaf(16, 8, -110, 0.8) + leaf(6, 6, 30, 0.75) + leaf(18, 18, 120, 0.75) + leaf(11, 12, 200, 0.7);
+    } else {
+      // mata de enredadera: tallo en espiral con hojas grandes
+      g = '<path d="M5 20 C 3 13, 9 11, 12 13 C 15 15, 17 11, 15 8 C 13 5, 8 6, 9 9 C 10 11, 13 10, 12.5 8.5" fill="none" stroke="#0f4f21" stroke-width="3.6" stroke-linecap="round"/>' +
+          '<path d="M5 20 C 3 13, 9 11, 12 13 C 15 15, 17 11, 15 8 C 13 5, 8 6, 9 9 C 10 11, 13 10, 12.5 8.5" fill="none" stroke="#46d061" stroke-width="2" stroke-linecap="round"/>' +
+          '<path d="M12 13 C 15 16, 18 17, 19.5 20" fill="none" stroke="#0f4f21" stroke-width="2.6" stroke-linecap="round"/>' +
+          '<path d="M12 13 C 15 16, 18 17, 19.5 20" fill="none" stroke="#46d061" stroke-width="1.3" stroke-linecap="round"/>' +
+          leaf(4.5, 15, -95, 1.1) + leaf(7, 12, -40, 1.1) + leaf(16, 9, -20, 1.05) + leaf(11, 6.5, -120, 1.0) +
+          leaf(16, 16, 60, 1.0) + leaf(19, 19.5, -40, 0.9) + leaf(5.5, 20, -15, 0.85);
+    }
+    return '<svg class="vinesvg" viewBox="0 0 24 24" aria-hidden="true">' + g + '</svg>';
+  }
+
   function buildBoardDom() {
     boardEl.innerHTML = "";
     cellEls = [];
@@ -739,9 +932,16 @@
     else if (preview === "bad") el.classList.add("preview-bad");
     if (v && v.symbol === L.STONE) {
       el.classList.add("stone");
+    } else if (v && v.symbol === L.VINE) {
+      el.classList.add("vine");
+      el.innerHTML = svgVine(false);
     } else if (v) {
       el.classList.add("filled");
       el.innerHTML = svgSymbol(v.symbol, COLOR[v.symbol] || v.color);
+      if (v.trapped) {
+        el.classList.add("trapped");
+        el.innerHTML += svgVine(true);
+      }
     }
   }
 
@@ -886,7 +1086,9 @@
     if (tray.every(function (p) { return !p; })) {
       tray = L.generateTrio();
       L.addStones(board, score >= 1500 ? 2 : 1);
+      const nv = L.addVine(board);
       renderBoard();
+      if (nv) cellEls[nv.r][nv.c].classList.add("vinegrow");
     }
     renderTray();
     if (!L.anyFits(board, tray)) endGame();
@@ -934,37 +1136,38 @@
     const placePts = L.placeScore(placed.length);
     setScore(score + placePts);
 
-    const groups = L.findMatchGroups(board, placed);
-    const matchCells = L.uniqueCells(groups.reduce(function (a, g) { return a.concat(g); }, []));
-    let matchPts = 0;
-    for (let i = 0; i < groups.length; i++) matchPts += L.matchScore(groups[i].length);
-    const stoneCells = L.stonesNextTo(board, matchCells);
-    matchPts += stoneCells.length * L.STONE_PTS;
+    const m = L.evalMatches(board, placed);
+    const matchCells = m.matchCells;
+    const matchPts = m.pts;
+    const trappedSet = Object.create(null);
+    m.trappedCells.forEach(function (p) { trappedSet[p.r + "," + p.c] = 1; });
 
     if (matchCells.length) {
-      const popCells = matchCells.concat(stoneCells);
+      const popCells = matchCells.concat(m.stoneCells, m.vineCells);
       for (let i = 0; i < popCells.length; i++) {
         const p = popCells[i];
-        cellEls[p.r][p.c].classList.add("pop");
+        cellEls[p.r][p.c].classList.add(trappedSet[p.r + "," + p.c] ? "freed" : "pop");
       }
       const mid = matchCells[Math.floor(matchCells.length / 2)];
       floatText(mid.r, mid.c, "+" + matchPts, matchPts >= 50 ? "big" : "mid");
       beep("clear");
       await sleep(280);
-      L.clearCells(board, matchCells);
-      L.clearCells(board, stoneCells);
+      L.applyMatches(board, m);
       setScore(score + matchPts);
       renderBoard();
     }
 
-    const lines = L.findFullLines(board);
-    const lineCells = L.cellsFromLines(lines);
-    const nLines = lines.rows.length + lines.cols.length;
-    const linePts = L.lineScore(nLines);
+    const l = L.evalLines(board);
+    const lines = l.lines;
+    const lineCells = l.lineCells;
+    const nLines = l.nLines;
+    const linePts = l.pts;
     if (lineCells.length) {
+      const lineTrapped = Object.create(null);
+      l.trappedCells.forEach(function (p) { lineTrapped[p.r + "," + p.c] = 1; });
       for (let i = 0; i < lineCells.length; i++) {
         const p = lineCells[i];
-        cellEls[p.r][p.c].classList.add("lineflash");
+        cellEls[p.r][p.c].classList.add(lineTrapped[p.r + "," + p.c] ? "freed" : "lineflash");
       }
       const midR = lines.rows[0] != null ? lines.rows[0] : 3;
       const midC = lines.cols[0] != null ? lines.cols[0] : 3;
@@ -972,9 +1175,21 @@
       beep("line");
       if (navigator.vibrate) navigator.vibrate(25);
       await sleep(320);
-      L.clearCells(board, lineCells);
+      L.hitCells(board, lineCells);
       setScore(score + linePts);
       renderBoard();
+    }
+
+    // la enredadera avanza o atrapa una figura
+    const moves = L.moveVines(board);
+    if (moves.length) {
+      renderBoard();
+      for (let i = 0; i < moves.length; i++) {
+        const mv = moves[i];
+        if (mv.to) cellEls[mv.to.r][mv.to.c].classList.add("vinegrow");
+        if (mv.captured) cellEls[mv.captured.r][mv.captured.c].classList.add("vinecatch");
+      }
+      await sleep(260);
     }
 
     const msg = praise(matchCells.length, nLines);
