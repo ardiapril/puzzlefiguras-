@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v6 -->
+<!-- figuras v8 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -334,6 +334,102 @@
     white-space: nowrap;
   }
   #toast.show { opacity: 1; }
+  /* ---- Viento ---- */
+  .windfx {
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .windfx .wrot { position: absolute; inset: 0; }
+  .windfx .streak {
+    position: absolute;
+    left: 0;
+    height: 6px;
+    width: 55%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.92) 55%, rgba(255,255,255,0) 100%);
+    filter: blur(.6px);
+    transform: translateX(-110%);
+    animation: streak .75s cubic-bezier(.3,.1,.3,1) forwards;
+  }
+  .windfx .streak.thin { height: 2.5px; opacity: .8; }
+  .windfx .swirl {
+    position: absolute;
+    width: 26px; height: 26px;
+    border: 3px solid rgba(255,255,255,.55);
+    border-color: rgba(255,255,255,.6) transparent transparent rgba(255,255,255,.6);
+    border-radius: 50%;
+    transform: translateX(-60px) rotate(0);
+    animation: swirl .8s ease-out forwards;
+  }
+  .windfx .wash {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.18) 50%, rgba(255,255,255,0) 100%);
+    transform: translateX(-100%);
+    animation: wash .7s ease-out forwards;
+  }
+  @keyframes streak {
+    0% { transform: translateX(-110%); opacity: 0; }
+    15% { opacity: 1; }
+    100% { transform: translateX(230%); opacity: 0; }
+  }
+  @keyframes swirl {
+    0% { transform: translateX(-60px) rotate(0); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translateX(380px) rotate(540deg); opacity: 0; }
+  }
+  @keyframes wash {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .cell.windslide {
+    z-index: 3;
+    overflow: visible;
+    animation: windslide .45s cubic-bezier(.25,.8,.35,1.15) both;
+  }
+  @keyframes windslide {
+    0% { transform: translate(var(--wx, 0px), var(--wy, 0px)) rotate(var(--wrot, 0deg)); }
+    100% { transform: translate(0, 0) rotate(0); }
+  }
+  #board.windshake { animation: windshake .5s ease-in-out; }
+  @keyframes windshake {
+    0%, 100% { transform: translate(0, 0); }
+    30% { transform: translate(var(--sx, 0px), var(--sy, 0px)); }
+    60% { transform: translate(calc(var(--sx, 0px) * -0.4), calc(var(--sy, 0px) * -0.4)); }
+  }
+  #banner {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%) scale(.6);
+    background: rgba(20, 26, 80, .82);
+    border: 2px solid rgba(255,255,255,.55);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 18px;
+    font-weight: 900;
+    font-size: 1.45rem;
+    letter-spacing: -0.01em;
+    text-shadow: 0 2px 0 rgba(0,0,0,.3);
+    box-shadow: 0 10px 24px rgba(0,0,0,.3);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 7;
+    white-space: nowrap;
+  }
+  #banner.show { animation: banner 1.15s ease-out forwards; }
+  #banner.wind { background: rgba(225, 240, 255, .9); color: #1c2a6b; text-shadow: none; }
+  #banner.unlock { background: linear-gradient(180deg, #ffcf4a, #f59f0b); color: #4a2a00; text-shadow: 0 1px 0 rgba(255,255,255,.4); }
+  @keyframes banner {
+    0% { transform: translate(-50%, -50%) scale(.6); opacity: 0; }
+    15% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+    25% { transform: translate(-50%, -50%) scale(1); }
+    80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -62%) scale(.96); opacity: 0; }
+  }
 </style>
 </head>
 <body>
@@ -350,6 +446,7 @@
       <div id="board" aria-label="Tablero"></div>
       <div id="fx"></div>
       <div id="toast"></div>
+      <div id="banner"></div>
     </div>
     <div id="tray" aria-label="Piezas"></div>
   </div>
@@ -682,7 +779,8 @@
     }
     return cells;
   }
-  function findMatchGroups(board, seeds) {
+  function findMatchGroups(board, seeds, opts) {
+    const onlyNew = !!(opts && opts.onlyNew); // viento: basta con que el grupo toque una casilla movida
     const seedSet = Object.create(null);
     for (let i = 0; i < seeds.length; i++) seedSet[seeds[i].r + "," + seeds[i].c] = true;
     const visited = Array.from({ length: SIZE }, function () { return Array(SIZE).fill(false); });
@@ -697,7 +795,7 @@
         if (seedSet[g[k].r + "," + g[k].c]) hasNew = true;
         else hasOld = true;
       }
-      if (hasNew && hasOld) groups.push(g);
+      if (hasNew && (hasOld || onlyNew)) groups.push(g);
     }
     return groups;
   }
@@ -751,8 +849,8 @@
     }
   }
   // Fase de grupos: devuelve qué se rompe y cuántos puntos da (sin tocar el tablero)
-  function evalMatches(board, placed) {
-    const groups = findMatchGroups(board, placed);
+  function evalMatches(board, placed, opts) {
+    const groups = findMatchGroups(board, placed, opts);
     const matchCells = uniqueCells(groups.reduce(function (a, g) { return a.concat(g); }, []));
     let pts = 0;
     for (let i = 0; i < groups.length; i++) pts += matchScore(groups[i].length);
@@ -805,6 +903,72 @@
       scores: { place: placePts, match: m.pts, line: l.pts, total: placePts + m.pts + l.pts }
     };
   }
+  // ---- Desbloqueo por puntos ----
+  const GATES = { stones: 100, vines: 700, wind: 1000 };
+  function stonesForScore(score) { return score < GATES.stones ? 0 : score >= 1500 ? 2 : 1; }
+  // Piedras y enredaderas al llegar una tanda nueva, según los puntos
+  function spawnForTrio(board, score, rng) {
+    const n = stonesForScore(score);
+    const stones = n ? addStones(board, n, rng) : [];
+    const vine = score >= GATES.vines ? addVine(board, rng) : null;
+    return { stones: stones, vine: vine };
+  }
+  // ¿Toca ráfaga en esta tanda? La primera tanda tras llegar a 1000 siempre;
+  // después 50 % de probabilidad, pero nunca más de 2 tandas seguidas sin viento.
+  const GUST_CHANCE = 0.5, GUST_MAX_GAP = 2;
+  function gustDue(score, state, rng) {
+    if (score < GATES.wind) return false;
+    const rnd = rng || Math.random;
+    if (!state.windOn) { state.windOn = true; state.sinceGust = 0; return true; }
+    state.sinceGust = (state.sinceGust || 0) + 1;
+    if (state.sinceGust > GUST_MAX_GAP || rnd() < GUST_CHANCE) { state.sinceGust = 0; return true; }
+    return false;
+  }
+  const WIND_DIRS = [
+    { name: "left", dr: 0, dc: -1 }, { name: "right", dr: 0, dc: 1 },
+    { name: "up", dr: -1, dc: 0 }, { name: "down", dr: 1, dc: 0 }
+  ];
+  // Figuras que el viento podría mover: libres (no atrapadas) y con hueco vacío al lado en esa dirección
+  function windCandidates(board, dir) {
+    const out = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      const v = board[r][c];
+      if (!isFigure(v) || v.trapped) continue;
+      const tr = r + dir.dr, tc = c + dir.dc;
+      if (inBounds(tr, tc) && !board[tr][tc]) out.push({ r: r, c: c });
+    }
+    return out;
+  }
+  // Ráfaga: elige dirección y 2-4 figuras; cada una avanza 1 casilla si está libre. Cambia el tablero.
+  // dirName opcional ("left"/"right"/"up"/"down") para pruebas.
+  function windGust(board, rng, dirName) {
+    const rnd = rng || Math.random;
+    let dir = WIND_DIRS[Math.floor(rnd() * 4)];
+    if (dirName) dir = WIND_DIRS.filter(function (d) { return d.name === dirName; })[0] || dir;
+    const want = 2 + Math.floor(rnd() * 3); // 2, 3 o 4
+    const cand = windCandidates(board, dir);
+    const chosen = [];
+    while (chosen.length < want && cand.length) chosen.push(cand.splice(Math.floor(rnd() * cand.length), 1)[0]);
+    // los destinos estaban vacíos y son distintos entre sí, así que se pueden mover todas a la vez
+    const moves = chosen.map(function (p) { return { from: p, to: { r: p.r + dir.dr, c: p.c + dir.dc } }; });
+    const vals = moves.map(function (m) { return board[m.from.r][m.from.c]; });
+    moves.forEach(function (m) { board[m.from.r][m.from.c] = null; });
+    moves.forEach(function (m, i) { board[m.to.r][m.to.c] = vals[i]; });
+    return { dir: dir.name, dr: dir.dr, dc: dir.dc, want: want, moves: moves };
+  }
+  // Tras la ráfaga: grupos de 4+ que toquen figuras movidas y líneas completas, con puntos normales
+  function resolveWind(board, moves) {
+    const seeds = moves.map(function (m) { return m.to; });
+    const m = evalMatches(board, seeds, { onlyNew: true });
+    const mHit = applyMatches(board, m);
+    const l = evalLines(board);
+    const lHit = hitCells(board, l.lineCells);
+    return {
+      groups: m.groups, matchCells: m.matchCells, stoneCells: m.stoneCells, vineCells: m.vineCells,
+      freed: mHit.freed.concat(lHit.freed), lines: l.lines, lineCells: l.lineCells,
+      scores: { match: m.pts, line: l.pts, total: m.pts + l.pts }
+    };
+  }
   function pieceFits(board, piece) {
     if (!piece) return false;
     for (let r = 0; r < SIZE; r++) {
@@ -834,7 +998,10 @@
     stonesNextTo: stonesNextTo, addStones: addStones,
     VINE: VINE, VINE_PTS: VINE_PTS, isVine: isVine, isBlocker: isBlocker, isFigure: isFigure,
     vinesNextTo: vinesNextTo, countVines: countVines, addVine: addVine, moveVines: moveVines,
-    hitCells: hitCells, evalMatches: evalMatches, applyMatches: applyMatches, evalLines: evalLines
+    hitCells: hitCells, evalMatches: evalMatches, applyMatches: applyMatches, evalLines: evalLines,
+    GATES: GATES, stonesForScore: stonesForScore, spawnForTrio: spawnForTrio, gustDue: gustDue,
+    GUST_CHANCE: GUST_CHANCE, GUST_MAX_GAP: GUST_MAX_GAP, WIND_DIRS: WIND_DIRS,
+    windCandidates: windCandidates, windGust: windGust, resolveWind: resolveWind
   };
   root.FigurasLogic = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -856,6 +1023,7 @@
   const dragLayer = document.getElementById("dragLayer");
   const btnNew = document.getElementById("btnNew");
   const toastEl = document.getElementById("toast");
+  const bannerEl = document.getElementById("banner");
 
   let board = L.makeBoard();
   let tray = [null, null, null];
@@ -865,6 +1033,9 @@
   let over = false;
   let drag = null;
   let cellEls = [];
+  let windState = {};   // control de ráfagas (gustDue)
+  let unlocked = {};    // avisos de desbloqueo ya mostrados en esta partida
+  let gustCount = 0;
 
   try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch (e) { best = 0; }
 
@@ -1019,8 +1190,38 @@
     }
   }
 
+  const UNLOCKS = [
+    { key: "stones", at: L.GATES.stones, text: "🪨 ¡Llegan las piedras!" },
+    { key: "vines", at: L.GATES.vines, text: "🌿 ¡Llegan las enredaderas!" },
+    { key: "wind", at: L.GATES.wind, text: "💨 ¡Llega el viento!" }
+  ];
+  function checkUnlocks() {
+    for (let i = 0; i < UNLOCKS.length; i++) {
+      const u = UNLOCKS[i];
+      if (!unlocked[u.key] && score >= u.at) { unlocked[u.key] = true; showBanner(u.text, "unlock"); }
+    }
+  }
+  // Cartel grande en el centro; si llegan varios, salen uno detrás de otro
+  const bannerQueue = [];
+  let bannerBusy = false;
+  function showBanner(text, kind) {
+    bannerQueue.push({ text: text, kind: kind || "" });
+    if (!bannerBusy) nextBanner();
+  }
+  function nextBanner() {
+    const b = bannerQueue.shift();
+    if (!b) { bannerBusy = false; return; }
+    bannerBusy = true;
+    bannerEl.className = "";
+    void bannerEl.offsetWidth;
+    bannerEl.textContent = b.text;
+    bannerEl.className = "show " + b.kind;
+    setTimeout(nextBanner, 1150);
+  }
+
   function setScore(n) {
     score = n;
+    checkUnlocks();
     scoreEl.textContent = String(score);
     if (score > best) {
       best = score;
@@ -1060,6 +1261,17 @@
       const o = ctx.createOscillator();
       const g = ctx.createGain();
       o.type = "triangle";
+      if (kind === "wind") {
+        o.type = "sine";
+        o.frequency.value = 300;
+        o.frequency.exponentialRampToValueAtTime(700, ctx.currentTime + 0.25);
+        g.gain.value = 0.03;
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+        o.stop(ctx.currentTime + 0.36);
+        return;
+      }
       o.frequency.value = kind === "clear" ? 660 : kind === "line" ? 880 : kind === "over" ? 180 : 420;
       g.gain.value = 0.04;
       o.connect(g); g.connect(ctx.destination);
@@ -1075,6 +1287,10 @@
     score = 0;
     locked = false;
     over = false;
+    windState = {};
+    unlocked = {};
+    gustCount = 0;
+    bannerQueue.length = 0;
     drag = null;
     dragLayer.innerHTML = "";
     overlayEl.classList.add("hidden");
@@ -1084,16 +1300,104 @@
     renderTray();
   }
 
-  function maybeRefill() {
+  // Tanda nueva: piedras (≥100), enredadera (≥700) y, a veces, ráfaga de viento (≥1000)
+  async function maybeRefill() {
     if (tray.every(function (p) { return !p; })) {
       tray = L.generateTrio();
-      L.addStones(board, score >= 1500 ? 2 : 1);
-      const nv = L.addVine(board);
+      const sp = L.spawnForTrio(board, score);
       renderBoard();
-      if (nv) cellEls[nv.r][nv.c].classList.add("vinegrow");
+      if (sp.vine) cellEls[sp.vine.r][sp.vine.c].classList.add("vinegrow");
+      renderTray();
+      if (L.gustDue(score, windState)) await doGust();
     }
     renderTray();
-    if (!L.anyFits(board, tray)) endGame();
+    if (!L.anyFits(board, tray)) endGame(); // el fin se comprueba después de la ráfaga
+  }
+
+  function windStreaks(dir) {
+    const fx = document.createElement("div");
+    fx.className = "windfx";
+    const rot = document.createElement("div");
+    rot.className = "wrot";
+    rot.style.transform = "rotate(" + ({ right: 0, down: 90, left: 180, up: -90 })[dir] + "deg)";
+    const wash = document.createElement("div");
+    wash.className = "wash";
+    rot.appendChild(wash);
+    for (let i = 0; i < 9; i++) {
+      const st = document.createElement("div");
+      st.className = "streak" + (i % 3 === 2 ? " thin" : "");
+      st.style.top = (6 + i * 10.5 + Math.random() * 5) + "%";
+      st.style.width = (38 + Math.random() * 30) + "%";
+      st.style.animationDelay = (Math.random() * 0.22).toFixed(2) + "s";
+      rot.appendChild(st);
+    }
+    for (let i = 0; i < 2; i++) {
+      const sw = document.createElement("div");
+      sw.className = "swirl";
+      sw.style.top = (25 + i * 40) + "%";
+      sw.style.animationDelay = (0.05 + i * 0.12) + "s";
+      rot.appendChild(sw);
+    }
+    fx.appendChild(rot);
+    boardEl.appendChild(fx);
+    setTimeout(function () { fx.remove(); }, 1100);
+  }
+
+  async function doGust(dirName) {
+    locked = true;
+    gustCount++;
+    const g = L.windGust(board, null, dirName);
+    showBanner("💨 ¡Ráfaga!", "wind");
+    windStreaks(g.dir);
+    if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+    beep("wind");
+    await sleep(160);
+    renderBoard();
+    const mt = boardMetrics();
+    const step = mt.stride + mt.gap;
+    boardEl.style.setProperty("--sx", (g.dc * 4) + "px");
+    boardEl.style.setProperty("--sy", (g.dr * 4) + "px");
+    boardEl.classList.remove("windshake"); void boardEl.offsetWidth; boardEl.classList.add("windshake");
+    for (let i = 0; i < g.moves.length; i++) {
+      const to = g.moves[i].to;
+      const el = cellEls[to.r][to.c];
+      el.style.setProperty("--wx", (-g.dc * step) + "px");
+      el.style.setProperty("--wy", (-g.dr * step) + "px");
+      el.style.setProperty("--wrot", (g.dc || g.dr) * -14 + "deg");
+      el.classList.add("windslide");
+    }
+    await sleep(520);
+    // una ráfaga con suerte puede formar un grupo de 4 o una línea
+    const m = L.evalMatches(board, g.moves.map(function (x) { return x.to; }), { onlyNew: true });
+    if (m.matchCells.length) {
+      const trappedSet = Object.create(null);
+      m.trappedCells.forEach(function (p) { trappedSet[p.r + "," + p.c] = 1; });
+      const popCells = m.matchCells.concat(m.stoneCells, m.vineCells);
+      for (let i = 0; i < popCells.length; i++) {
+        const p = popCells[i];
+        cellEls[p.r][p.c].classList.add(trappedSet[p.r + "," + p.c] ? "freed" : "pop");
+      }
+      const mid = m.matchCells[Math.floor(m.matchCells.length / 2)];
+      floatText(mid.r, mid.c, "+" + m.pts, "big");
+      beep("clear");
+      await sleep(280);
+      L.applyMatches(board, m);
+      setScore(score + m.pts);
+      renderBoard();
+    }
+    const l = L.evalLines(board);
+    if (l.lineCells.length) {
+      for (let i = 0; i < l.lineCells.length; i++) cellEls[l.lineCells[i].r][l.lineCells[i].c].classList.add("lineflash");
+      floatText(l.lines.rows[0] != null ? l.lines.rows[0] : 3, l.lines.cols[0] != null ? l.lines.cols[0] : 3, "+" + l.pts, "big");
+      beep("line");
+      await sleep(320);
+      L.hitCells(board, l.lineCells);
+      setScore(score + l.pts);
+      renderBoard();
+    }
+    if (m.matchCells.length || l.lineCells.length) showToast("¡Viento a favor!");
+    locked = false;
+    return g;
   }
 
   function endGame() {
@@ -1197,8 +1501,8 @@
     const msg = praise(matchCells.length, nLines);
     if (msg) showToast(msg);
 
-    locked = false;
-    maybeRefill();
+    await maybeRefill();
+    if (!over) locked = false;
     return true;
   }
 
@@ -1366,6 +1670,10 @@
     setTray: function (p) { tray = p; renderTray(); },
     setBoard: function (b) { board = b; renderBoard(); renderTray(); },
     placeAt: function (index, r, c) { return applyPlacement(index, r, c); },
+    setScore: function (n) { setScore(n); },
+    gust: function (dir) { return doGust(dir); },
+    getGustCount: function () { return gustCount; },
+    getWindState: function () { return windState; },
     endGame: endGame
   };
 
