@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v2 -->
+<!-- figuras v3 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -441,7 +441,9 @@
   }
   function generatePiece(rng) {
     const shape = randomShape(rng);
-    return makePiece(shape, assignSymbols(shape, rng));
+    const rnd = rng || Math.random;
+    const sym = SYMBOLS[Math.floor(rnd() * SYMBOLS.length)];
+    return makePiece(shape, shape.map(function () { return sym; }));
   }
   function generateTrio(rng) {
     return [generatePiece(rng), generatePiece(rng), generatePiece(rng)];
