@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v14 menú batalla + bosque píxel + piezas -->
+<!-- figuras v16 selector de piezas bn/color + menú batalla + bosque píxel -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -1101,10 +1101,14 @@
   /* ---- piezas v12: gemas talladas ---- */
   .sym { overflow: visible; }
   .cell .sym, .mini .mcell .sym, .flyer .sym { filter: none; }
-  .sym.s-triangle { filter: drop-shadow(0 0 3px rgba(255, 120, 70, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
-  .sym.s-circle   { filter: drop-shadow(0 0 3px rgba(90, 170, 255, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
-  .sym.s-star     { filter: drop-shadow(0 0 3px rgba(255, 205, 90, .5))  drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
-  .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(70, 225, 160, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  .sym.s-triangle { filter: drop-shadow(0 0 3px rgba(255,255,255,.4)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
+  .sym.s-circle   { filter: drop-shadow(0 0 3px rgba(255,255,255,.35)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
+  .sym.s-star     { filter: drop-shadow(0 0 3px rgba(255,255,255,.35)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
+  .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(255,255,255,.4)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
+  [data-piece-style="color"] .sym.s-triangle { filter: drop-shadow(0 0 3px rgba(255, 120, 70, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-circle   { filter: drop-shadow(0 0 3px rgba(90, 170, 255, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-star     { filter: drop-shadow(0 0 3px rgba(255, 205, 90, .5))  drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(70, 225, 160, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
   .cell .sym { inset: 7%; }
   .mini .mcell .sym { inset: 5%; }
   @media (max-width: 380px) {
@@ -1210,6 +1214,52 @@
   text-shadow: 0 1px 0 #1A1E22;
 }
 #menu .theme-toggle:active {
+  border-bottom-width: 2px;
+  transform: translateY(2px);
+}
+#menu .menu-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#menu .style-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#menu .style-btn {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  width: 48px;
+  height: 46px;
+  padding: 5px 5px 4px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #4A5560 0%, #333A42 100%);
+  border: 2px solid #6A757E;
+  border-top-color: #8A96A0;
+  border-bottom: 4px solid #242A30;
+  border-radius: 14px;
+  cursor: pointer;
+  image-rendering: pixelated;
+  -webkit-tap-highlight-color: transparent;
+}
+#menu .style-btn svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  filter: none !important;
+}
+#menu .style-btn.is-on {
+  border-color: #C8A038;
+  border-top-color: #E0C060;
+  border-bottom-color: #6A5018;
+  box-shadow: inset 0 1px 0 rgba(255,240,160,.25), 0 0 0 1px rgba(200,160,56,.35);
+}
+#menu .style-btn:active {
   border-bottom-width: 2px;
   transform: translateY(2px);
 }
@@ -1438,6 +1488,17 @@
   color: #2A2820;
   text-shadow: 0 1px 0 #F4F0E6;
 }
+[data-theme="light"] #menu .style-btn {
+  background: linear-gradient(180deg, #E8E4D8 0%, #C8C4B6 100%);
+  border-color: #8A8678;
+  border-top-color: #F4F0E6;
+  border-bottom-color: #6A6658;
+}
+[data-theme="light"] #menu .style-btn.is-on {
+  border-color: #C8A038;
+  border-top-color: #E0C060;
+  border-bottom-color: #6A5018;
+}
 [data-theme="light"] #menu .menu-trophy {
   background: linear-gradient(180deg, #FFF6D0 0%, #F0E0A0 100%);
   border-color: #C8A038;
@@ -1472,10 +1533,16 @@
   <div id="menu" class="screen">
     <div class="motes" id="menuMotes" aria-hidden="true"></div>
     <div class="menu-top">
+      <div class="menu-top-left">
       <button type="button" class="theme-toggle" id="btnTheme" aria-label="Cambiar tema">
         <span class="theme-ico" id="themeIco">☾</span>
         <span id="themeLabel">Oscuro</span>
       </button>
+      <div class="style-picker" role="group" aria-label="Estilo de las piezas">
+        <button type="button" class="style-btn is-on" id="btnStyleBn" aria-pressed="true" aria-label="Piezas en blanco y negro"></button>
+        <button type="button" class="style-btn" id="btnStyleColor" aria-pressed="false" aria-label="Piezas de color"></button>
+      </div>
+      </div>
       <div class="menu-trophy" title="Mejor en infinito">
         <svg class="trophy-ico" viewBox="0 0 11 12" shape-rendering="crispEdges" aria-hidden="true">
           <rect x="4" y="0" width="3" height="1" fill="#FFF0B4"/>
@@ -2167,7 +2234,7 @@
 (function () {
   const L = FigurasLogic;
   // Colores de presentación (la lógica conserva los suyos)
-  const COLOR = { triangle: "#D44A32", circle: "#2A6FA8", star: "#D8A82A", heart: "#24A858" };
+  const COLOR = { triangle: "#EDEDF0", circle: "#FFFFFF", star: "#FFFFFF", heart: "#EDEDF0" };
   const LEVELS_OPEN = false; // todos los niveles: próximamente
   const BEST_KEY = "figuras_mejor";
 
@@ -2197,6 +2264,7 @@
   try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch (e) { best = 0; }
 
   const THEME_KEY = "figuras_tema";
+  const STYLE_KEY = "figuras_piezas";
   const PROG_KEY = "figuras_niveles";
   const LEVELS = [
     { id: 1,  name: "El despertar",   goal: { type: "score",  n: 120  }, moves: [10, 16],  hint: "Haz 120 puntos" },
@@ -2400,16 +2468,16 @@
   const PIX = {
     triangle: [
       "................",
-      "................",
-      ".......MM.......",
-      "......DLMD......",
-      ".....DLHLMD.....",
-      "....DMLHLMMD....",
-      "...DMMLLLMMMD...",
-      "..DMMMMLMMMMMD..",
-      ".DMMMMMLMMMMMMD.",
-      "DMMMMMMMLMMMMMMD",
-      "DDDDDDDDDDDDDDDD",
+      ".......D........",
+      "......DMD.......",
+      ".....DMMMD......",
+      "....DMMMMMD.....",
+      "...DMMMLMMMD....",
+      "..DMMMMMMMMMD...",
+      ".DMMMMMMMMMMMD..",
+      "DMMMMMMMMMMMMMD.",
+      "DMMMMMMMMMMMMMD.",
+      "DDDDDDDDDDDDDDD.",
       "................",
       "................",
       "................",
@@ -2420,16 +2488,16 @@
       "................",
       ".....DDDDDD.....",
       "...DDMMMMMMDD...",
-      "..DMMLHHHLMMMD..",
-      ".DMMLHHMMMMLMMD.",
-      ".DMLHMMMMMMMLMD.",
-      "DMMLMMMMMMMMLMMD",
-      "DMMLMMMMMMMMLLMD",
-      "DMMMLMMMMMMLLMMD",
-      "DMMMMLMMMMLLLMMD",
-      ".DMMMMLLLLLMMMD.",
-      ".DMMMMMLLLMMMD..",
-      "..DDMMMMMMMMDD..",
+      "..DMMMMMMMMMMD..",
+      ".DMMMMMMMMMMMMD.",
+      ".DMMMLMMMMMMMMD.",
+      "DMMMLLMMMMMMMMMD",
+      "DMMMMMMMMMMMMMMD",
+      "DMMMMMMMMMMMMMMD",
+      "DMMMMMMMMMMMMMMD",
+      ".DMMMMMMMMMMMMD.",
+      ".DMMMMMMMMMMMMD.",
+      "..DMMMMMMMMMMD..",
       "...DDMMMMMMDD...",
       ".....DDDDDD.....",
       "................"
@@ -2454,31 +2522,50 @@
     ],
     heart: [
       "................",
-      "...DMD...DMD....",
-      "..DLHLD.DLHLD...",
-      ".DLHHHHDLHHHLD..",
-      ".DLHHHMMMHHHLD..",
-      "DMLHHMMMMMHHLMD.",
-      "DMMLHMMMMMHLMMD.",
-      ".DMMLMMMMMLMMD..",
-      "..DMMLMMMLMMD...",
-      "...DMMLMLMMD....",
-      "....DMMLMMD.....",
-      ".....DMLMD......",
-      "......DMD.......",
-      ".......D........",
+      "..DDDD....DDDD..",
+      ".DMMMMD..DMMMMD.",
+      "DMMMMMMDDMMMMMMD",
+      "DMLMMMMMMMMMMMMD",
+      "DMMMMMMMMMMMMMMD",
+      "DMMMMMMMMMMMMMMD",
+      ".DMMMMMMMMMMMMD.",
+      "..DMMMMMMMMMMD..",
+      "...DMMMMMMMMD...",
+      "....DMMMMMMD....",
+      ".....DMMMMD.....",
+      "......DMMD......",
+      ".......DD.......",
       "................",
       "................"
     ]
   };
-  const PIX_PAL = {
-    triangle: { D: "#7A2418", M: "#D44A32", L: "#F07858", H: "#FFC8A0" },
-    circle:   { D: "#123A68", M: "#2A6FA8", L: "#5AA8D8", H: "#C8E8F8" },
-    star:     { D: "#785010", M: "#D8A82A", L: "#F0D060", H: "#FFF0B4" },
-    heart:    { D: "#105A30", M: "#24A858", L: "#50D882", H: "#B4F5C8" }
+  const PIX_PALETTES = {
+    bn: {
+      triangle: { D: "#C8C8CE", M: "#17171A", L: "#3A3A42", H: "#6A6A72" },
+      circle:   { D: "#8A8A90", M: "#E6E6EA", L: "#F4F4F6", H: "#FFFFFF" },
+      star:     { D: "#8A8A90", M: "#E6E6EA", L: "#F4F4F6", H: "#FFFFFF" },
+      heart:    { D: "#C8C8CE", M: "#17171A", L: "#3A3A42", H: "#6A6A72" }
+    },
+    color: {
+      triangle: { D: "#7A2418", M: "#D44A32", L: "#F07858", H: "#FFC8A0" },
+      circle:   { D: "#123A68", M: "#2A6FA8", L: "#5AA8D8", H: "#C8E8F8" },
+      star:     { D: "#785010", M: "#D8A82A", L: "#F0D060", H: "#FFF0B4" },
+      heart:    { D: "#105A30", M: "#24A858", L: "#50D882", H: "#B4F5C8" }
+    }
   };
-  function pixSvg(name) {
-    const g = PIX[name], pal = PIX_PAL[name];
+  const COLOR_PALETTES = {
+    bn:    { triangle: "#EDEDF0", circle: "#FFFFFF", star: "#FFFFFF", heart: "#EDEDF0" },
+    color: { triangle: "#D44A32", circle: "#2A6FA8", star: "#D8A82A", heart: "#24A858" }
+  };
+  function readPieceStyle() {
+    try { return localStorage.getItem(STYLE_KEY) === "color" ? "color" : "bn"; }
+    catch (e) { return "bn"; }
+  }
+  let pieceStyle = "bn";
+  let PIX_PAL = PIX_PALETTES.bn;
+  function pixSvg(name, pal) {
+    const g = PIX[name];
+    pal = pal || (PIX_PAL && PIX_PAL[name]);
     if (!g || !pal) return "";
     let s = "";
     for (let y = 0; y < 16; y++) {
@@ -3623,6 +3710,8 @@
   document.getElementById("btnNiveles").addEventListener("click", goLevels);
   document.getElementById("btnBackMenu").addEventListener("click", goMenu);
   document.getElementById("btnTheme").addEventListener("click", toggleTheme);
+  document.getElementById("btnStyleBn").addEventListener("click", function () { applyPieceStyle("bn"); });
+  document.getElementById("btnStyleColor").addEventListener("click", function () { applyPieceStyle("color"); });
 
   window.__figuras = {
     newGame: newGame,
@@ -3650,6 +3739,8 @@
     getLevelStats: function () { return Object.assign({}, levelStats); },
     getTheme: function () { return readTheme(); },
     setTheme: applyTheme,
+    getPieceStyle: function () { return pieceStyle; },
+    setPieceStyle: applyPieceStyle,
     getProgress: function () { return Object.assign({}, progress); },
     setProgress: function (p) { progress = p || {}; try { localStorage.setItem(PROG_KEY, JSON.stringify(progress)); } catch (e) {} },
     sound: { isOn: function () { return soundOn; }, hasContext: function () { return Snd.hasContext(); }, state: function () { return Snd.ctxState(); }, unlock: function () { Snd.unlock(); } }
@@ -3673,11 +3764,45 @@
       el.appendChild(f);
     }
   })();
-  (function fillMenuPieces() {
+  function fillMenuPieces() {
     const el = document.getElementById("menuPieces");
     if (el) el.innerHTML = ["triangle", "circle", "heart", "star"].map(function (s) { return svgSymbol(s); }).join("");
-  })();
+  }
+  function fillStylePreviews() {
+    const names = ["triangle", "circle", "heart", "star"];
+    function html(style) {
+      const pals = PIX_PALETTES[style];
+      return names.map(function (n) {
+        return '<svg class="sym s-' + n + '" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' + pixSvg(n, pals[n]) + "</svg>";
+      }).join("");
+    }
+    const bn = document.getElementById("btnStyleBn");
+    const col = document.getElementById("btnStyleColor");
+    if (bn) bn.innerHTML = html("bn");
+    if (col) col.innerHTML = html("color");
+  }
+  function applyPieceStyle(style) {
+    style = style === "color" ? "color" : "bn";
+    pieceStyle = style;
+    PIX_PAL = PIX_PALETTES[style];
+    Object.assign(COLOR, COLOR_PALETTES[style]);
+    SYM_SVG.triangle = pixSvg("triangle");
+    SYM_SVG.circle = pixSvg("circle");
+    SYM_SVG.star = pixSvg("star");
+    SYM_SVG.heart = pixSvg("heart");
+    document.documentElement.setAttribute("data-piece-style", style);
+    try { localStorage.setItem(STYLE_KEY, style); } catch (e) {}
+    const bn = document.getElementById("btnStyleBn");
+    const col = document.getElementById("btnStyleColor");
+    if (bn) { bn.classList.toggle("is-on", style === "bn"); bn.setAttribute("aria-pressed", style === "bn" ? "true" : "false"); }
+    if (col) { col.classList.toggle("is-on", style === "color"); col.setAttribute("aria-pressed", style === "color" ? "true" : "false"); }
+    fillMenuPieces();
+    if (cellEls && cellEls.length) renderBoard();
+    if (trayEl) renderTray();
+  }
+  fillStylePreviews();
   applyTheme(readTheme());
+  applyPieceStyle(readPieceStyle());
   updateMenuBest();
   buildBoardDom();
   renderScores();
