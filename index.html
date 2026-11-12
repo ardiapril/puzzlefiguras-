@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v17 récord y por poco, sin avisos de mecánica, corazón rojo triángulo verde -->
+<!-- figuras v19 brillo de explosión al arrastrar -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -283,6 +283,104 @@
     background: var(--bad);
     outline: 2px solid rgba(255,80,80,.7);
     outline-offset: -2px;
+  }
+  .cell.will-clear {
+    z-index: 3;
+    overflow: visible;
+    outline: 2px solid color-mix(in srgb, var(--will) 80%, #fff);
+    outline-offset: -1px;
+    background: color-mix(in srgb, var(--will) 30%, var(--empty));
+    animation: willPulse .9s ease-in-out infinite;
+  }
+  .cell.will-clear::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 5px;
+    pointer-events: none;
+    z-index: 0;
+    box-shadow:
+      0 0 12px 3px color-mix(in srgb, var(--will) 75%, transparent),
+      inset 0 0 10px color-mix(in srgb, var(--will) 50%, transparent);
+    animation: willGlow .9s ease-in-out infinite;
+  }
+  .cell.will-clear .sym {
+    filter:
+      drop-shadow(0 0 6px var(--will))
+      drop-shadow(0 2px 0 rgba(0,0,0,.28))
+      brightness(1.22);
+  }
+  .cell.will-ghost .sym { opacity: .92; }
+  .cell.will-line {
+    z-index: 2;
+    overflow: visible;
+    outline: 2px solid rgba(255, 230, 130, .95);
+    outline-offset: -1px;
+    background: rgba(255, 214, 80, .28);
+    animation: willPulse .85s ease-in-out infinite;
+  }
+  .cell.will-line::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 5px;
+    pointer-events: none;
+    z-index: 0;
+    box-shadow:
+      0 0 12px 3px rgba(255, 220, 100, .7),
+      inset 0 0 10px rgba(255, 240, 160, .45);
+    animation: willGlow .85s ease-in-out infinite;
+  }
+  .cell.will-stone {
+    z-index: 2;
+    overflow: visible;
+    outline: 2px solid rgba(220, 228, 236, .9);
+    outline-offset: -1px;
+    animation: willPulse .9s ease-in-out infinite;
+  }
+  .cell.will-stone::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 5px;
+    pointer-events: none;
+    box-shadow:
+      0 0 11px 3px rgba(210, 220, 235, .65),
+      inset 0 0 8px rgba(255, 255, 255, .35);
+    animation: willGlow .9s ease-in-out infinite;
+  }
+  .cell.will-vine {
+    z-index: 2;
+    overflow: visible;
+    outline: 2px solid rgba(90, 220, 120, .9);
+    outline-offset: -1px;
+    animation: willPulse .9s ease-in-out infinite;
+  }
+  .cell.will-vine::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 5px;
+    pointer-events: none;
+    box-shadow:
+      0 0 11px 3px rgba(80, 220, 120, .6),
+      inset 0 0 8px rgba(120, 255, 150, .3);
+    animation: willGlow .9s ease-in-out infinite;
+  }
+  @keyframes willPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.07); }
+  }
+  @keyframes willGlow {
+    0%, 100% { opacity: .6; }
+    50% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cell.will-clear, .cell.will-line, .cell.will-stone, .cell.will-vine { animation: none; }
+    .cell.will-clear::after, .cell.will-line::after, .cell.will-stone::after, .cell.will-vine::after {
+      animation: none;
+      opacity: 1;
+    }
   }
   .cell.pop {
     animation: pop .28s ease-out forwards;
@@ -1173,10 +1271,10 @@
   .sym.s-circle   { filter: drop-shadow(0 0 3px rgba(255,255,255,.35)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
   .sym.s-star     { filter: drop-shadow(0 0 3px rgba(255,255,255,.35)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
   .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(255,255,255,.4)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
-  [data-piece-style="color"] .sym.s-triangle { filter: drop-shadow(0 0 3px rgba(70, 225, 160, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
-  [data-piece-style="color"] .sym.s-circle   { filter: drop-shadow(0 0 3px rgba(90, 170, 255, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
-  [data-piece-style="color"] .sym.s-star     { filter: drop-shadow(0 0 3px rgba(255, 205, 90, .5))  drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
-  [data-piece-style="color"] .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(255, 120, 70, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-triangle { filter: drop-shadow(0 0 3px rgba(255, 120, 30, .55)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-circle   { filter: drop-shadow(0 0 3px rgba(40, 140, 255, .55)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-star     { filter: drop-shadow(0 0 3px rgba(255, 210, 50, .55)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(255, 55, 45, .55))  drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
   .cell .sym { inset: 7%; }
   .mini .mcell .sym { inset: 5%; }
   @media (max-width: 380px) {
@@ -2618,15 +2716,15 @@
       heart:    { D: "#C8C8CE", M: "#17171A", L: "#3A3A42", H: "#6A6A72" }
     },
     color: {
-      triangle: { D: "#105A30", M: "#24A858", L: "#50D882", H: "#B4F5C8" },
-      circle:   { D: "#123A68", M: "#2A6FA8", L: "#5AA8D8", H: "#C8E8F8" },
-      star:     { D: "#785010", M: "#D8A82A", L: "#F0D060", H: "#FFF0B4" },
-      heart:    { D: "#7A2418", M: "#D44A32", L: "#F07858", H: "#FFC8A0" }
+      triangle: { D: "#7D3708", M: "#F5680A", L: "#FA8C42", H: "#FAC9A8" },
+      circle:   { D: "#073973", M: "#1674C2", L: "#48ACEA", H: "#C6E9FA" },
+      star:     { D: "#7F5209", M: "#ECB116", L: "#F7D459", H: "#FFF0B4" },
+      heart:    { D: "#81160C", M: "#EA301C", L: "#F76951", H: "#FFC8A0" }
     }
   };
   const COLOR_PALETTES = {
     bn:    { triangle: "#EDEDF0", circle: "#FFFFFF", star: "#FFFFFF", heart: "#EDEDF0" },
-    color: { triangle: "#24A858", circle: "#2A6FA8", star: "#D8A82A", heart: "#D44A32" }
+    color: { triangle: "#F5680A", circle: "#1674C2", star: "#ECB116", heart: "#EA301C" }
   };
   function readPieceStyle() {
     try { return localStorage.getItem(STYLE_KEY) === "color" ? "color" : "bn"; }
@@ -2698,11 +2796,12 @@
     }
   }
 
-  function paintCell(r, c, preview) {
+  function paintCell(r, c, preview, hint) {
     const el = cellEls[r][c];
     const v = board[r][c];
     el.className = "cell";
     el.style.removeProperty("--c");
+    el.style.removeProperty("--will");
     el.innerHTML = "";
     if (preview === "ok") el.classList.add("preview-ok");
     else if (preview === "bad") el.classList.add("preview-bad");
@@ -2719,9 +2818,87 @@
         el.innerHTML += svgVine(true);
       }
     }
+    if (!hint) return;
+    const kind = hint.kind;
+    const sym = hint.symbol;
+    if (kind === "match") {
+      el.classList.add("will-clear");
+      if (sym) el.style.setProperty("--will", COLOR[sym] || "#fff");
+      if (!v && sym) {
+        el.classList.add("filled", "will-ghost");
+        el.innerHTML = svgSymbol(sym, COLOR[sym] || "#fff");
+      }
+    } else if (kind === "line") {
+      el.classList.add("will-line");
+      if (!v && sym) {
+        el.classList.add("filled", "will-ghost");
+        el.innerHTML = svgSymbol(sym, COLOR[sym] || "#fff");
+      }
+    } else if (kind === "stone") {
+      el.classList.add("will-stone");
+    } else if (kind === "vine") {
+      el.classList.add("will-vine");
+    }
   }
 
-  function renderBoard(previewCells, previewOk) {
+  function cloneBoard(src) {
+    const out = [];
+    for (let r = 0; r < 8; r++) {
+      out[r] = [];
+      for (let c = 0; c < 8; c++) {
+        const v = src[r][c];
+        out[r][c] = v ? Object.assign({}, v) : null;
+      }
+    }
+    return out;
+  }
+
+  function computeClearHint(piece, r, c) {
+    if (!L.canPlace(board, piece, r, c)) return null;
+    const next = cloneBoard(board);
+    const placed = L.placePiece(next, piece, r, c);
+    if (!placed) return null;
+    const m = L.evalMatches(next, placed);
+    const symbols = Object.create(null);
+    function remember(cells) {
+      if (!cells) return;
+      for (let i = 0; i < cells.length; i++) {
+        const p = cells[i];
+        const v = next[p.r][p.c];
+        if (v && v.symbol) symbols[p.r + "," + p.c] = v.symbol;
+      }
+    }
+    remember(m.matchCells);
+    remember(m.stoneCells);
+    remember(m.vineCells);
+    L.applyMatches(next, m);
+    const l = L.evalLines(next);
+    remember(l.lineCells);
+    if (!m.matchCells.length && !l.lineCells.length &&
+        !(m.stoneCells && m.stoneCells.length) &&
+        !(m.vineCells && m.vineCells.length) &&
+        !(m.trappedCells && m.trappedCells.length)) {
+      return null;
+    }
+    const map = Object.create(null);
+    function mark(cells, kind) {
+      if (!cells) return;
+      for (let i = 0; i < cells.length; i++) {
+        const p = cells[i];
+        const k = p.r + "," + p.c;
+        if (map[k]) continue;
+        map[k] = { kind: kind, symbol: symbols[k] || null };
+      }
+    }
+    mark(m.matchCells, "match");
+    mark(l.lineCells, "line");
+    mark(m.stoneCells, "stone");
+    mark(m.vineCells, "vine");
+    mark(m.trappedCells, "vine");
+    return map;
+  }
+
+  function renderBoard(previewCells, previewOk, clearHint) {
     const map = Object.create(null);
     if (previewCells) {
       for (let i = 0; i < previewCells.length; i++) {
@@ -2730,7 +2907,10 @@
       }
     }
     for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) paintCell(r, c, map[r + "," + c]);
+      for (let c = 0; c < 8; c++) {
+        const k = r + "," + c;
+        paintCell(r, c, map[k], clearHint && clearHint[k]);
+      }
     }
   }
 
@@ -3732,7 +3912,8 @@
     const anyOn = cells.some(function (p) { return L.inBounds(p.r, p.c); });
     if (!anyOn) { renderBoard(); drag.target = null; return; }
     const ok = L.canPlace(board, piece, at.r, at.c);
-    renderBoard(cells, ok);
+    const hint = ok ? computeClearHint(piece, at.r, at.c) : null;
+    renderBoard(cells, ok, hint);
     drag.target = ok ? at : { r: at.r, c: at.c, bad: true };
   }
 
