@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v20 menos corte con piezas grandes -->
+<!-- figuras v21 piezas al tamaño de la casilla -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -1122,7 +1122,7 @@
     35%, 60% { opacity: .9; }
   }
   @media (prefers-reduced-motion: reduce) {
-    #atmos .shafts i, .fly, .menu-pieces svg { animation: none !important; }
+    #atmos .shafts i, .fly, .menu-pieces svg, .menu-pieces img { animation: none !important; }
     .fly { opacity: .6; }
   }
 
@@ -1144,13 +1144,13 @@
     display: flex; justify-content: center; gap: 18px;
     margin: 0 auto 34px;
   }
-  .menu-pieces svg {
+  .menu-pieces svg, .menu-pieces img {
     width: 30px; height: 30px; overflow: visible;
     animation: pieceFloat 5.5s ease-in-out infinite;
   }
-  .menu-pieces svg:nth-child(2) { animation-delay: -1.4s; }
-  .menu-pieces svg:nth-child(3) { animation-delay: -2.8s; }
-  .menu-pieces svg:nth-child(4) { animation-delay: -4.1s; }
+  .menu-pieces svg:nth-child(2), .menu-pieces img:nth-child(2) { animation-delay: -1.4s; }
+  .menu-pieces svg:nth-child(3), .menu-pieces img:nth-child(3) { animation-delay: -2.8s; }
+  .menu-pieces svg:nth-child(4), .menu-pieces img:nth-child(4) { animation-delay: -4.1s; }
   @keyframes pieceFloat {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-4px); }
@@ -1288,6 +1288,29 @@
   [data-piece-style="color"] .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(255, 55, 45, .55))  drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
   .cell .sym { inset: 7%; }
   .mini .mcell .sym { inset: 5%; }
+  /* img.sym tiene tamaño intrínseco 128px: con solo inset se sale de la casilla */
+  .cell .sym,
+  .flyer .sym {
+    inset: auto;
+    top: 7%;
+    left: 7%;
+    width: 86%;
+    height: 86%;
+    object-fit: contain;
+    max-width: none;
+    max-height: none;
+  }
+  .mini .mcell .sym {
+    inset: auto;
+    top: 5%;
+    left: 5%;
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+    max-width: none;
+    max-height: none;
+  }
+  #menu .menu-pieces img { width: 28px; height: 28px; object-fit: contain; }
   @media (max-width: 380px) {
     .brand { font-size: 1rem; letter-spacing: .18em; }
     #btnNew, #btnMenu { font-size: .74rem; padding: 7px 8px; }
@@ -1486,7 +1509,7 @@
 #menu .menu-pieces {
   margin: 0 auto 0;
 }
-#menu .menu-pieces svg {
+#menu .menu-pieces svg, .menu-pieces img {
   width: 36px;
   height: 36px;
 }
@@ -1694,7 +1717,7 @@
 @media (max-height: 640px) {
   #menu .cr-play { min-height: 72px; padding: 12px 8px 9px; }
   #menu .cr-levels { min-height: 64px; }
-  #menu .menu-pieces svg { width: 28px; height: 28px; }
+  #menu .menu-pieces svg, .menu-pieces img { width: 28px; height: 28px; }
   #menu .menu-title { margin: 0 0 10px !important; }
   #menu .menu-title .logo { width: min(240px, 72vw); }
 }
