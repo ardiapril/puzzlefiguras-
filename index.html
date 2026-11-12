@@ -1,39 +1,98 @@
 <!DOCTYPE html>
-<!-- figuras v9 -->
+<!-- figuras v11 menú + tema -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" id="statusBar">
 <meta name="apple-mobile-web-app-title" content="Figuras">
-<meta name="theme-color" content="#5d6cf6">
+<meta name="theme-color" content="#07080c">
 <meta name="figuras-version" content="2">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235d6cf6'/%3E%3Cpolygon points='16,4 19.5,13 29,13 21.5,19 24.5,28 16,23 7.5,28 10.5,19 3,13 12.5,13' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2307080c'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%23d4c080' stroke-width='1'/%3E%3Cpolygon points='16,6 18.5,13.5 26,14 20,18.5 22,26 16,22 10,26 12,18.5 6,14 13.5,13.5' fill='%23e8e4d9'/%3E%3C/svg%3E">
 <meta name="format-detection" content="telephone=no">
 <title>Figuras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Source+Sans+3:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  try {
+    var _t = localStorage.getItem("figuras_tema");
+    document.documentElement.setAttribute("data-theme", _t === "light" ? "light" : "dark");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+</script>
 <style>
-  :root {
-    --bg1: #6b7bff;
-    --bg2: #4f5de8;
-    --board: #1a1f4d;
-    --empty: #262b62;
-    --empty-line: #22275a;
-    --text: #ffffff;
-    --gold: #ffd15a;
-    --slot: #4a58d4;
-    --ok: rgba(255,255,255,.38);
-    --bad: rgba(239,68,68,.45);
+  :root, [data-theme="dark"] {
+    --bg1: #07080c;
+    --bg2: #10151c;
+    --bg-glow: rgba(110, 150, 155, .14);
+    --board: #0d1117;
+    --board-edge: rgba(212, 192, 128, .28);
+    --empty: #161c26;
+    --empty-line: #121820;
+    --text: #e8e4d9;
+    --text-dim: #8b9398;
+    --gold: #d4c080;
+    --slot: #161c26;
+    --ok: rgba(232,228,217,.38);
+    --bad: rgba(180,50,50,.5);
+    --accent: #7eb8b0;
+    --btn-bg: rgba(232,228,217,.08);
+    --btn-fg: #e8e4d9;
+    --btn-border: rgba(232,228,217,.22);
+    --modal-bg: #141820;
+    --modal-fg: #e8e4d9;
+    --modal-btn: #d4c080;
+    --modal-btn-fg: #1a1408;
+    --ghost-bg: rgba(232,228,217,.1);
+    --ghost-fg: #e8e4d9;
+    --overlay: rgba(5, 6, 10, .68);
+    --slot-shadow: inset 0 1px 0 rgba(232,228,217,.08), 0 6px 14px rgba(0,0,0,.45);
+    --board-shadow: 0 0 0 1px rgba(212,192,128,.12), 0 16px 40px rgba(0,0,0,.55), inset 0 0 50px rgba(0,0,0,.45);
+    --banner-bg: rgba(10, 14, 18, .88);
     --safe-t: env(safe-area-inset-top, 0px);
     --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  [data-theme="light"] {
+    --bg1: #e8e2d4;
+    --bg2: #cfc6b4;
+    --bg-glow: rgba(255, 252, 245, .5);
+    --board: #2a2f38;
+    --board-edge: rgba(70, 60, 40, .35);
+    --empty: #3a414c;
+    --empty-line: #333840;
+    --text: #1c1a16;
+    --text-dim: #5c574c;
+    --gold: #7a6230;
+    --slot: #d4cec0;
+    --ok: rgba(40,80,50,.35);
+    --bad: rgba(180,50,50,.45);
+    --accent: #2f6b66;
+    --btn-bg: rgba(28,26,22,.08);
+    --btn-fg: #1c1a16;
+    --btn-border: rgba(28,26,22,.2);
+    --modal-bg: #f3efe4;
+    --modal-fg: #1c1a16;
+    --modal-btn: #3a3428;
+    --modal-btn-fg: #f3efe4;
+    --ghost-bg: #e0d9ca;
+    --ghost-fg: #1c1a16;
+    --overlay: rgba(40, 36, 28, .45);
+    --slot-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 4px 10px rgba(40,35,25,.18);
+    --board-shadow: 0 0 0 1px rgba(40,35,25,.15), 0 14px 32px rgba(40,35,25,.28), inset 0 0 40px rgba(0,0,0,.3);
+    --banner-bg: rgba(243, 239, 228, .94);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0; height: 100%;
-    background: linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
+    background:
+      radial-gradient(ellipse 90% 55% at 50% 28%, var(--bg-glow), transparent 70%),
+      linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-family: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     overflow: hidden;
     touch-action: none;
     user-select: none;
@@ -60,22 +119,25 @@
     flex-shrink: 0;
   }
   .brand {
-    font-weight: 800;
-    font-size: 1.55rem;
-    letter-spacing: -0.03em;
-    text-shadow: 0 2px 0 rgba(0,0,0,.15);
+    font-family: Cinzel, Palatino, "Palatino Linotype", serif;
+    font-weight: 600;
+    font-size: 1.35rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-shadow: 0 0 18px rgba(200,220,230,.18);
   }
-  #btnNew {
-    border: 0;
-    background: rgba(255,255,255,.2);
-    color: #fff;
+  [data-theme="light"] .brand { text-shadow: none; }
+  #btnNew, #btnMenu {
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
     font-weight: 700;
-    font-size: .92rem;
-    padding: 8px 14px;
-    border-radius: 999px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+    font-size: .88rem;
+    padding: 7px 12px;
+    border-radius: 3px;
+    letter-spacing: .02em;
   }
-  #btnNew:active { transform: scale(.97); background: rgba(255,255,255,.3); }
+  #btnNew:active, #btnMenu:active { transform: scale(.97); opacity: .85; }
   .scores {
     display: flex;
     align-items: baseline;
@@ -88,10 +150,10 @@
     align-items: center;
     gap: 6px;
     font-weight: 800;
-    font-size: 1.7rem;
-    letter-spacing: -0.03em;
+    font-size: 1.6rem;
+    letter-spacing: -0.02em;
     color: var(--gold);
-    text-shadow: 0 2px 0 rgba(0,0,0,.18);
+    text-shadow: 0 0 16px rgba(212,192,128,.25);
   }
   .score .crown { font-size: 1.25rem; filter: drop-shadow(0 2px 0 rgba(0,0,0,.18)); }
   .best {
@@ -117,12 +179,13 @@
     gap: 3.5px;
     padding: 9px;
     background: var(--board);
-    border-radius: 22px;
-    box-shadow: 0 10px 0 rgba(30, 36, 110, .55), 0 18px 30px rgba(0,0,0,.22);
+    border-radius: 8px;
+    border: 1px solid var(--board-edge);
+    box-shadow: var(--board-shadow);
     position: relative;
   }
   .cell {
-    border-radius: 7px;
+    border-radius: 3px;
     background: var(--empty);
     position: relative;
     overflow: hidden;
@@ -246,12 +309,13 @@
   }
   .slot {
     background: var(--slot);
-    border-radius: 18px;
+    border-radius: 6px;
     min-height: 118px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: inset 0 2px 0 rgba(255,255,255,.16), 0 4px 0 rgba(40,48,160,.35);
+    border: 1px solid var(--btn-border);
+    box-shadow: var(--slot-shadow);
     position: relative;
   }
   .slot.nofit { opacity: .42; }
@@ -280,7 +344,7 @@
   #overlay {
     position: fixed;
     inset: 0;
-    background: rgba(12, 16, 50, .55);
+    background: var(--overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -291,39 +355,48 @@
   }
   #overlay.hidden { display: none; }
   .modal {
-    background: #fff;
-    color: #1c2150;
-    border-radius: 24px;
+    background: var(--modal-bg);
+    color: var(--modal-fg);
+    border-radius: 6px;
+    border: 1px solid var(--board-edge);
     padding: 26px 24px 22px;
     width: min(360px, 100%);
     text-align: center;
-    box-shadow: 0 20px 50px rgba(0,0,0,.3);
+    box-shadow: 0 20px 50px rgba(0,0,0,.45);
   }
-  .modal h2 { margin: 0 0 8px; font-size: 1.55rem; }
+  .modal h2 {
+    margin: 0 0 8px;
+    font-size: 1.45rem;
+    font-family: Cinzel, Palatino, serif;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
   .modal p { margin: 0 0 6px; font-size: 1.05rem; }
   .modal .bigscore {
     font-size: 2rem;
     font-weight: 800;
-    color: #4f5de8;
+    color: var(--gold);
     margin: 10px 0 4px;
   }
   .modal .bestline { margin-bottom: 18px; opacity: .75; font-weight: 600; }
   .modal button {
-    border: 0;
-    background: #5d6cf6;
-    color: #fff;
+    border: 1px solid var(--board-edge);
+    background: var(--modal-btn);
+    color: var(--modal-btn-fg);
     font-weight: 800;
-    font-size: 1.05rem;
+    font-size: 1.02rem;
     padding: 12px 22px;
-    border-radius: 999px;
+    border-radius: 3px;
     width: 100%;
+    letter-spacing: .04em;
   }
   .modal button:active { transform: scale(.98); }
   .confirm-row { display: flex; gap: 10px; margin-top: 16px; }
   .confirm-row button { flex: 1; }
   .confirm-row .ghost {
-    background: #eceeff;
-    color: #1c2150;
+    background: var(--ghost-bg);
+    color: var(--ghost-fg);
   }
   #toast {
     position: absolute;
@@ -346,7 +419,7 @@
   .windfx {
     position: absolute;
     inset: 0;
-    border-radius: 22px;
+    border-radius: 8px;
     overflow: hidden;
     pointer-events: none;
     z-index: 4;
@@ -413,9 +486,9 @@
     left: 50%;
     top: 46%;
     transform: translate(-50%, -50%) scale(.6);
-    background: rgba(20, 26, 80, .82);
-    border: 2px solid rgba(255,255,255,.55);
-    color: #fff;
+    background: var(--banner-bg);
+    border: 1px solid var(--board-edge);
+    color: var(--text);
     padding: 10px 20px;
     border-radius: 18px;
     font-weight: 900;
@@ -429,8 +502,8 @@
     white-space: nowrap;
   }
   #banner.show { animation: banner 1.15s ease-out forwards; }
-  #banner.wind { background: rgba(225, 240, 255, .9); color: #1c2a6b; text-shadow: none; }
-  #banner.unlock { background: linear-gradient(180deg, #ffcf4a, #f59f0b); color: #4a2a00; text-shadow: 0 1px 0 rgba(255,255,255,.4); }
+  #banner.wind { background: rgba(180, 210, 220, .92); color: #102028; text-shadow: none; }
+  #banner.unlock { background: linear-gradient(180deg, #d4c080, #a88640); color: #2a1e08; text-shadow: 0 1px 0 rgba(255,255,255,.3); }
   @keyframes banner {
     0% { transform: translate(-50%, -50%) scale(.6); opacity: 0; }
     15% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
@@ -442,15 +515,14 @@
   /* ---- v9: sensación al explotar ---- */
   .hdr-right { display: flex; align-items: center; gap: 8px; }
   #btnSound {
-    border: 0;
-    background: rgba(255,255,255,.2);
-    color: #fff;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
     font-size: 1.05rem;
     width: 38px; height: 36px;
     padding: 0;
     line-height: 1;
-    border-radius: 999px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+    border-radius: 3px;
   }
   #btnSound:active { transform: scale(.94); }
   #btnSound.off { opacity: .7; }
@@ -537,20 +609,298 @@
     text-shadow: 0 4px 0 #8f1556, 0 0 22px rgba(255,120,190,.85), 0 8px 16px rgba(0,0,0,.4);
   }
   .combo small { display: block; font-size: .55em; text-align: center; color: #fff; -webkit-text-stroke: 1px #5a0b35; }
+
+  /* ---- menú, niveles, tema ---- */
+  #app.hidden, #menu.hidden, #levelSelect.hidden { display: none !important; }
+  .screen {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: calc(var(--safe-t) + 24px) 24px calc(var(--safe-b) + 24px);
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 90% 55% at 50% 28%, var(--bg-glow), transparent 70%),
+      linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
+    color: var(--text);
+  }
+  .motes { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .mote {
+    position: absolute;
+    bottom: -8px;
+    width: 2px; height: 2px;
+    border-radius: 50%;
+    background: rgba(232, 228, 217, .55);
+    box-shadow: 0 0 6px 1px rgba(200, 220, 230, .3);
+    animation: moteRise linear infinite;
+  }
+  [data-theme="light"] .mote {
+    background: rgba(80, 70, 40, .35);
+    box-shadow: 0 0 5px 1px rgba(255,255,240,.35);
+  }
+  @keyframes moteRise {
+    0% { transform: translateY(0) scale(1); opacity: 0; }
+    12% { opacity: .75; }
+    100% { transform: translateY(-110vh) scale(.5); opacity: 0; }
+  }
+  .menu-inner { position: relative; z-index: 1; width: min(360px, 100%); text-align: center; }
+  .menu-mark {
+    width: 64px; height: 64px;
+    margin: 0 auto 18px;
+    color: var(--gold);
+    opacity: .9;
+    filter: drop-shadow(0 0 12px rgba(212,192,128,.35));
+  }
+  [data-theme="light"] .menu-mark { filter: none; }
+  .menu-title {
+    font-family: Cinzel, Palatino, "Palatino Linotype", serif;
+    font-weight: 700;
+    font-size: 2.7rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--text);
+    text-shadow: 0 0 28px rgba(200, 220, 230, .22), 0 0 70px rgba(120, 160, 170, .12);
+    margin: 0 0 10px;
+    padding-left: .28em;
+  }
+  [data-theme="light"] .menu-title { text-shadow: none; }
+  .menu-rule {
+    width: 88px;
+    height: 1px;
+    margin: 0 auto 16px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .menu-sub {
+    margin: 0 0 28px;
+    font-size: .95rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  .menu-btn {
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto 12px;
+    padding: 15px 18px 13px;
+    background: var(--btn-bg);
+    border: 1px solid rgba(212, 192, 128, .4);
+    color: var(--text);
+    font-family: Cinzel, Palatino, serif;
+    font-size: 1.12rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    border-radius: 2px;
+  }
+  [data-theme="light"] .menu-btn { border-color: var(--btn-border); }
+  .menu-btn:active { transform: scale(.98); background: rgba(212, 192, 128, .16); }
+  .menu-btn small {
+    display: block;
+    margin-top: 5px;
+    font-family: "Source Sans 3", system-ui, sans-serif;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: none;
+    opacity: .65;
+    font-weight: 500;
+  }
+  .menu-best {
+    margin: 18px 0 28px;
+    font-size: .92rem;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  .menu-best span { color: var(--gold); font-weight: 800; }
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text);
+    font-weight: 700;
+    font-size: .9rem;
+    padding: 8px 16px;
+    border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .theme-toggle:active { transform: scale(.97); }
+  .theme-ico { font-size: 1.05rem; line-height: 1; }
+
+  #levelSelect { justify-content: flex-start; }
+  .ls-head {
+    position: relative;
+    z-index: 1;
+    width: min(400px, 100%);
+    display: flex;
+    align-items: center;
+    margin: 8px 0 18px;
+    flex-shrink: 0;
+    min-height: 36px;
+  }
+  .ls-head h2 {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    text-align: center;
+    font-family: Cinzel, Palatino, serif;
+    font-weight: 600;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    font-size: 1.35rem;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .back {
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text);
+    font-weight: 700;
+    font-size: .85rem;
+    padding: 7px 12px;
+    border-radius: 3px;
+    justify-self: start;
+    white-space: nowrap;
+  }
+  #levelGrid {
+    position: relative;
+    z-index: 1;
+    width: min(400px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: auto;
+    padding-bottom: 8px;
+  }
+  .lv {
+    appearance: none;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text);
+    border-radius: 3px;
+    padding: 11px 14px;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    text-align: left;
+  }
+  .lv .lv-n {
+    font-family: Cinzel, Palatino, serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: .06em;
+    width: 2em;
+    flex-shrink: 0;
+    color: var(--gold);
+    text-align: left;
+  }
+  .lv .lv-name {
+    flex: 1;
+    font-family: Cinzel, Palatino, serif;
+    font-weight: 600;
+    font-size: .88rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    min-width: 0;
+  }
+  .lv .lv-stars { font-size: .85rem; letter-spacing: 2px; color: var(--gold); flex-shrink: 0; }
+  .lv.locked {
+    opacity: .45;
+    pointer-events: none;
+  }
+  .lv.locked .lv-n { color: var(--text-dim); }
+  .lv:not(.locked):active { transform: scale(.98); background: rgba(212,192,128,.16); }
+  .lv.done { border-color: rgba(212, 192, 128, .55); }
+
+  .goal {
+    font-weight: 700;
+    font-size: .88rem;
+    color: var(--text-dim);
+    text-align: right;
+    max-width: 58%;
+    line-height: 1.25;
+  }
+  .goal b { color: var(--gold); font-weight: 800; }
+  .goal.hidden { display: none; }
+  .best.hidden { display: none; }
+
+  .stars-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 12px 0 8px;
+    font-size: 2rem;
+    color: var(--gold);
+    letter-spacing: .08em;
+    text-shadow: 0 0 14px rgba(212,192,128,.4);
+  }
+  .stars-row .off { opacity: .28; text-shadow: none; }
+  .modal .lv-name {
+    font-family: Cinzel, Palatino, serif;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-size: .95rem;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
 </style>
 </head>
 <body>
-  <div id="app">
+  <div id="menu" class="screen">
+    <div class="motes" id="menuMotes" aria-hidden="true"></div>
+    <div class="menu-inner">
+      <div class="menu-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="32" cy="32" r="29" stroke="currentColor" stroke-width="1" opacity=".55"/>
+          <circle cx="32" cy="32" r="23" stroke="currentColor" stroke-width=".6" opacity=".3"/>
+          <polygon points="32,10 35.2,22.8 48,23.2 37.8,30.6 41.4,43.5 32,36.2 22.6,43.5 26.2,30.6 16,23.2 28.8,22.8" fill="currentColor"/>
+        </svg>
+      </div>
+      <h1 class="menu-title">Figuras</h1>
+      <div class="menu-rule"></div>
+      <p class="menu-sub">Elige un modo</p>
+      <button type="button" class="menu-btn" id="btnInfinito">Infinito<small>Sin final, a por tu récord</small></button>
+      <button type="button" class="menu-btn" id="btnNiveles">Niveles<small>Misiones cortas, de una en una</small></button>
+      <p class="menu-best">Mejor en infinito: <span id="menuBest">0</span></p>
+      <button type="button" class="theme-toggle" id="btnTheme" aria-label="Cambiar tema">
+        <span class="theme-ico" id="themeIco">☾</span>
+        <span id="themeLabel">Oscuro</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="levelSelect" class="screen hidden">
+    <div class="motes" id="lvMotes" aria-hidden="true"></div>
+    <div class="ls-head">
+      <button type="button" class="back" id="btnBackMenu">← Menú</button>
+      <h2>Niveles</h2>
+      <span></span>
+    </div>
+    <div id="levelGrid"></div>
+  </div>
+
+  <div id="app" class="hidden">
     <header>
       <div class="brand">Figuras</div>
       <div class="hdr-right">
         <button type="button" id="btnSound" aria-label="Sonido">🔊</button>
         <button type="button" id="btnNew">Nueva partida</button>
+        <button type="button" id="btnMenu">Menú</button>
       </div>
     </header>
     <div class="scores">
       <div class="score"><span class="crown">👑</span><span id="score">0</span></div>
-      <div class="best">Mejor <span id="best">0</span></div>
+      <div id="goalEl" class="goal hidden"></div>
+      <div class="best" id="bestWrap">Mejor <span id="best">0</span></div>
     </div>
     <div id="boardWrap">
       <div id="board" aria-label="Tablero"></div>
@@ -1216,6 +1566,201 @@
 
   try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch (e) { best = 0; }
 
+  const THEME_KEY = "figuras_tema";
+  const PROG_KEY = "figuras_niveles";
+  const LEVELS = [
+    { id: 1,  name: "El despertar",   goal: { type: "score",  n: 120  }, moves: [10, 16],  hint: "Haz 120 puntos" },
+    { id: 2,  name: "Cuatro iguales", goal: { type: "groups", n: 4    }, moves: [10, 16],  hint: "Forma 4 grupos" },
+    { id: 3,  name: "La raya",        goal: { type: "lines",  n: 1    }, moves: [15, 25],  hint: "Completa 1 línea" },
+    { id: 4,  name: "Más alto",       goal: { type: "score",  n: 400  }, moves: [20, 32],  hint: "Haz 400 puntos" },
+    { id: 5,  name: "El doble",       goal: { type: "combo",  n: 1    }, moves: [18, 28],  hint: "Haz 1 combo" },
+    { id: 6,  name: "La roca",        goal: { type: "score",  n: 900  }, moves: [28, 42],  hint: "Llega a 900 puntos" },
+    { id: 7,  name: "Rompepiedras",   goal: { type: "stones", n: 5    }, moves: [35, 50],  hint: "Rompe 5 piedras" },
+    { id: 8,  name: "La espesura",    goal: { type: "score",  n: 1900 }, moves: [45, 65],  hint: "Llega a 1.900 puntos" },
+    { id: 9,  name: "El viento",      goal: { type: "score",  n: 2900 }, moves: [55, 80],  hint: "Llega a 2.900 puntos" },
+    { id: 10, name: "El abismo",      goal: { type: "score",  n: 4000 }, moves: [70, 100], hint: "Llega a 4.000 puntos" }
+  ];
+
+  let mode = "menu";
+  let levelId = 0;
+  let won = false;
+  let levelStats = { moves: 0, groups: 0, lines: 0, stones: 0, combos: 0 };
+  let progress = {};
+  try { progress = JSON.parse(localStorage.getItem(PROG_KEY) || "{}") || {}; } catch (e) { progress = {}; }
+
+  const goalEl = document.getElementById("goalEl");
+  const bestWrap = document.getElementById("bestWrap");
+  const btnMenu = document.getElementById("btnMenu");
+  const menuBestEl = document.getElementById("menuBest");
+
+  function readTheme() {
+    try { return localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark"; }
+    catch (e) { return "dark"; }
+  }
+  function applyTheme(t) {
+    t = t === "light" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", t === "light" ? "#e8e2d4" : "#07080c");
+    const ico = document.getElementById("themeIco");
+    const lab = document.getElementById("themeLabel");
+    if (ico) ico.textContent = t === "light" ? "☼" : "☾";
+    if (lab) lab.textContent = t === "light" ? "Claro" : "Oscuro";
+  }
+  function toggleTheme() { applyTheme(readTheme() === "dark" ? "light" : "dark"); }
+
+  function fillMotes(el, n) {
+    if (!el || el.childElementCount) return;
+    n = n || 22;
+    for (let i = 0; i < n; i++) {
+      const m = document.createElement("div");
+      m.className = "mote";
+      m.style.left = (Math.random() * 100) + "%";
+      m.style.animationDuration = (8 + Math.random() * 14) + "s";
+      m.style.animationDelay = (-Math.random() * 16) + "s";
+      const sz = 1 + Math.random() * 2.2;
+      m.style.width = m.style.height = sz + "px";
+      el.appendChild(m);
+    }
+  }
+
+  function showScreen(name) {
+    document.getElementById("menu").classList.toggle("hidden", name !== "menu");
+    document.getElementById("levelSelect").classList.toggle("hidden", name !== "levels");
+    document.getElementById("app").classList.toggle("hidden", name !== "game");
+    if (name !== "game") {
+      overlayEl.classList.add("hidden");
+      overlayEl.innerHTML = "";
+    }
+  }
+
+  function currentLevel() { return LEVELS[levelId - 1] || null; }
+  function isUnlocked(id) {
+    if (id <= 1) return true;
+    return (progress[String(id - 1)] || progress[id - 1] || 0) >= 1;
+  }
+  function goalValue() {
+    const lv = currentLevel();
+    if (!lv) return 0;
+    const t = lv.goal.type;
+    if (t === "score") return score;
+    if (t === "groups") return levelStats.groups;
+    if (t === "lines") return levelStats.lines;
+    if (t === "stones") return levelStats.stones;
+    if (t === "combo") return levelStats.combos;
+    return 0;
+  }
+  function goalUnit(lv, n) {
+    const t = lv.goal.type;
+    if (t === "score") return n + " pts";
+    if (t === "groups") return n === 1 ? "1 grupo" : n + " grupos";
+    if (t === "lines") return n === 1 ? "1 línea" : n + " líneas";
+    if (t === "stones") return n === 1 ? "1 piedra" : n + " piedras";
+    if (t === "combo") return n === 1 ? "1 combo" : n + " combos";
+    return String(n);
+  }
+  function updateHud() {
+    if (!goalEl || !bestWrap) return;
+    if (mode === "level") {
+      const lv = currentLevel();
+      if (!lv) return;
+      const cur = Math.min(goalValue(), lv.goal.n);
+      goalEl.classList.remove("hidden");
+      bestWrap.classList.add("hidden");
+      goalEl.innerHTML = "Nivel " + lv.id + " · " + lv.name + "<br><b>" + cur + "/" + goalUnit(lv, lv.goal.n) + "</b>";
+      btnNew.textContent = "Reiniciar";
+    } else {
+      goalEl.classList.add("hidden");
+      bestWrap.classList.remove("hidden");
+      btnNew.textContent = "Nueva partida";
+    }
+  }
+  function updateMenuBest() {
+    if (menuBestEl) menuBestEl.textContent = String(best);
+  }
+  function starsFor(lv, moves) {
+    if (moves <= lv.moves[0]) return 3;
+    if (moves <= lv.moves[1]) return 2;
+    return 1;
+  }
+  function saveStars(id, stars) {
+    const key = String(id);
+    const prev = progress[key] || progress[id] || 0;
+    if (stars > prev) {
+      progress[key] = stars;
+      try { localStorage.setItem(PROG_KEY, JSON.stringify(progress)); } catch (e) {}
+    }
+  }
+  function goalMet() {
+    return mode === "level" && !won && currentLevel() && goalValue() >= currentLevel().goal.n;
+  }
+  function goMenu() {
+    mode = "menu";
+    updateMenuBest();
+    showScreen("menu");
+  }
+  function goLevels() {
+    renderLevelGrid();
+    showScreen("levels");
+  }
+  function startInfinite() {
+    mode = "infinite";
+    levelId = 0;
+    won = false;
+    showScreen("game");
+    newGame();
+  }
+  function startLevel(id) {
+    const lv = LEVELS[id - 1];
+    if (!lv) return;
+    if (!isUnlocked(id)) return;
+    mode = "level";
+    levelId = id;
+    won = false;
+    showScreen("game");
+    newGame();
+  }
+  function renderLevelGrid() {
+    const grid = document.getElementById("levelGrid");
+    grid.innerHTML = "";
+    for (let i = 0; i < LEVELS.length; i++) {
+      const lv = LEVELS[i];
+      const open = isUnlocked(lv.id);
+      const stars = progress[String(lv.id)] || progress[lv.id] || 0;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "lv" + (open ? (stars ? " done" : "") : " locked");
+      b.setAttribute("aria-label", open ? ("Nivel " + lv.id + ", " + lv.name) : ("Nivel " + lv.id + " bloqueado"));
+      const starTxt = open
+        ? (stars ? "★".repeat(stars) + "☆".repeat(3 - stars) : "☆☆☆")
+        : "🔒";
+      b.innerHTML = '<span class="lv-n">' + lv.id + '</span><span class="lv-name">' + lv.name + '</span><span class="lv-stars">' + starTxt + "</span>";
+      if (open) {
+        b.addEventListener("click", function () { startLevel(lv.id); });
+      }
+      grid.appendChild(b);
+    }
+  }
+  function confirmLeave(title, body, okLabel, onOk) {
+    overlayEl.innerHTML =
+      '<div class="modal">' +
+        "<h2>" + title + "</h2>" +
+        "<p>" + body + "</p>" +
+        '<div class="confirm-row">' +
+          '<button type="button" class="ghost" id="btnCancel">Cancelar</button>' +
+          '<button type="button" id="btnOk">' + okLabel + "</button>" +
+        "</div>" +
+      "</div>";
+    overlayEl.classList.remove("hidden");
+    document.getElementById("btnCancel").addEventListener("click", function () {
+      overlayEl.classList.add("hidden");
+      overlayEl.innerHTML = "";
+    });
+    document.getElementById("btnOk").addEventListener("click", onOk);
+  }
+
+
   function svgSymbol(name, color) {
     const f = color || "#fff";
     const st = ' fill="' + f + '" stroke="rgba(255,255,255,.85)" stroke-width="1.3" stroke-linejoin="round"';
@@ -1434,16 +1979,19 @@
     score = n;
     checkUnlocks();
     showScore(score);
-    if (score > best) {
+    if (mode !== "level" && score > best) {
       best = score;
       bestEl.textContent = String(best);
+      updateMenuBest();
       try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
     }
+    updateHud();
   }
 
   function renderScores() {
     showScore(score, true);
     bestEl.textContent = String(best);
+    updateHud();
   }
 
   function showToast(text) {
@@ -1863,9 +2411,11 @@
     score = 0;
     locked = false;
     over = false;
+    won = false;
     windState = {};
     unlocked = {};
     gustCount = 0;
+    levelStats = { moves: 0, groups: 0, lines: 0, stones: 0, combos: 0 };
     bannerQueue.length = 0;
     drag = null;
     dragLayer.innerHTML = "";
@@ -1879,6 +2429,7 @@
 
   // Tanda nueva: piedras (≥900), enredadera (≥1900) y, a veces, ráfaga de viento (≥2900)
   async function maybeRefill() {
+    if (won || goalMet()) return;
     if (tray.every(function (p) { return !p; })) {
       tray = L.generateTrio();
       const sp = L.spawnForTrio(board, score);
@@ -1889,6 +2440,7 @@
       if (L.gustDue(score, windState)) await doGust();
     }
     renderTray();
+    if (won || goalMet()) return;
     if (!L.anyFits(board, tray)) endGame(); // el fin se comprueba después de la ráfaga
   }
 
@@ -1975,27 +2527,99 @@
       renderBoard();
     }
     if (m.matchCells.length || l.lineCells.length) showToast("¡Viento a favor!");
+    if (m.matchCells.length) {
+      levelStats.groups += m.groups.length;
+      levelStats.stones += (m.stoneCells || []).length;
+    }
+    if (l.lineCells.length) {
+      levelStats.lines += l.nLines;
+      levelStats.stones += gustBrokenStones.length - (m.stoneCells || []).length;
+    }
+    if (gEvents >= 2) levelStats.combos++;
+    updateHud();
     await maybeShowRespawn(stoneBeforeGust, gustBrokenStones);
+    if (await maybeWin()) return g;
     locked = false;
     return g;
   }
 
   function endGame() {
-    if (over) return;
+    if (over || won) return;
     over = true;
     locked = true;
     beep("over");
     buzz([40, 40, 80]);
+    if (mode === "level") {
+      const lv = currentLevel();
+      const cur = goalValue();
+      overlayEl.innerHTML =
+        '<div class="modal">' +
+          '<div class="lv-name">Nivel ' + lv.id + "</div>" +
+          "<h2>No completado</h2>" +
+          "<p>No cabe ninguna pieza</p>" +
+          '<p class="bestline">' + lv.hint + " · " + cur + "/" + lv.goal.n + "</p>" +
+          '<div class="confirm-row">' +
+            '<button type="button" class="ghost" id="btnToMenu">Menú</button>' +
+            '<button type="button" id="btnRetry">Reintentar</button>' +
+          "</div>" +
+        "</div>";
+      overlayEl.classList.remove("hidden");
+      document.getElementById("btnToMenu").addEventListener("click", goMenu);
+      document.getElementById("btnRetry").addEventListener("click", function () { startLevel(lv.id); });
+      return;
+    }
     overlayEl.innerHTML =
       '<div class="modal">' +
         "<h2>Fin de la partida</h2>" +
         "<p>No cabe ninguna pieza</p>" +
         '<div class="bigscore">' + score + " puntos</div>" +
         '<div class="bestline">Mejor: ' + best + "</div>" +
-        '<button type="button" id="btnAgain">Jugar de nuevo</button>' +
+        '<div class="confirm-row">' +
+          '<button type="button" class="ghost" id="btnToMenu">Menú</button>' +
+          '<button type="button" id="btnAgain">Jugar de nuevo</button>' +
+        "</div>" +
       "</div>";
     overlayEl.classList.remove("hidden");
     document.getElementById("btnAgain").addEventListener("click", newGame);
+    document.getElementById("btnToMenu").addEventListener("click", goMenu);
+  }
+
+  async function maybeWin() {
+    if (!goalMet()) return false;
+    won = true;
+    over = true;
+    locked = true;
+    const lv = currentLevel();
+    const stars = starsFor(lv, levelStats.moves);
+    saveStars(lv.id, stars);
+    beep("combo");
+    buzz([20, 40, 20, 40, 80]);
+    await sleep(180);
+    let starHtml = '<div class="stars-row">';
+    for (let i = 1; i <= 3; i++) starHtml += '<span class="' + (i <= stars ? "" : "off") + '">★</span>';
+    starHtml += "</div>";
+    const nextBtn = lv.id < LEVELS.length
+      ? '<button type="button" id="btnNext">Siguiente</button>'
+      : '<p class="bestline">Has terminado todos los niveles</p>';
+    overlayEl.innerHTML =
+      '<div class="modal">' +
+        '<div class="lv-name">Nivel ' + lv.id + "</div>" +
+        "<h2>Completado</h2>" +
+        "<p>" + lv.name + "</p>" +
+        starHtml +
+        '<p class="bestline">' + levelStats.moves + (levelStats.moves === 1 ? " movimiento" : " movimientos") + "</p>" +
+        nextBtn +
+        '<div class="confirm-row" style="margin-top:12px">' +
+          '<button type="button" class="ghost" id="btnToMenu">Menú</button>' +
+          '<button type="button" id="btnRetry">Reintentar</button>' +
+        "</div>" +
+      "</div>";
+    overlayEl.classList.remove("hidden");
+    const nx = document.getElementById("btnNext");
+    if (nx) nx.addEventListener("click", function () { startLevel(lv.id + 1); });
+    document.getElementById("btnToMenu").addEventListener("click", goMenu);
+    document.getElementById("btnRetry").addEventListener("click", function () { startLevel(lv.id); });
+    return true;
   }
 
   // Solo felicita las jugadas buenas: combo, varias explosiones, línea o grupo de 6+
@@ -2044,6 +2668,7 @@
     if (!piece || locked || over) return false;
     if (!L.canPlace(board, piece, r, c)) return false;
     locked = true;
+    levelStats.moves++;
     const placed = L.placePiece(board, piece, r, c);
     const stoneBefore = L.countStones(board);
     tray[index] = null;
@@ -2066,6 +2691,8 @@
       await sleep(280);
       L.applyMatches(board, m);
       setScore(score + matchPts);
+      levelStats.groups += m.groups.length;
+      levelStats.stones += (m.stoneCells || []).length;
       renderBoard();
     }
 
@@ -2088,8 +2715,12 @@
       await sleep(320);
       L.hitCells(board, lineCells);
       setScore(score + linePts);
+      levelStats.lines += nLines;
+      levelStats.stones += brokenStones.length - (m.stoneCells || []).length;
       renderBoard();
     }
+    if (events >= 2) levelStats.combos++;
+    updateHud();
 
     if (await maybeShowRespawn(stoneBefore, brokenStones)) { /* el grupo entero se ha roto y nace en otro sitio */ }
 
@@ -2109,6 +2740,7 @@
     if (msg) showToast(msg);
 
     await maybeRefill();
+    if (await maybeWin()) return true;
     if (!over) locked = false;
     return true;
   }
@@ -2247,24 +2879,25 @@
     if (drag) e.preventDefault();
   }, { passive: false });
 
+  function restartNow() {
+    if (mode === "level") startLevel(levelId);
+    else newGame();
+  }
   btnNew.addEventListener("click", function () {
-    if (over || score === 0) { newGame(); return; }
-    overlayEl.innerHTML =
-      '<div class="modal">' +
-        "<h2>¿Nueva partida?</h2>" +
-        "<p>Se perderá la puntuación actual.</p>" +
-        '<div class="confirm-row">' +
-          '<button type="button" class="ghost" id="btnCancel">Cancelar</button>' +
-          '<button type="button" id="btnOk">Sí, empezar</button>' +
-        "</div>" +
-      "</div>";
-    overlayEl.classList.remove("hidden");
-    document.getElementById("btnCancel").addEventListener("click", function () {
-      overlayEl.classList.add("hidden");
-      overlayEl.innerHTML = "";
-    });
-    document.getElementById("btnOk").addEventListener("click", newGame);
+    if (over || won || score === 0) { restartNow(); return; }
+    const title = mode === "level" ? "¿Reiniciar el nivel?" : "¿Nueva partida?";
+    const body = mode === "level" ? "Se perderá el progreso de este intento." : "Se perderá la puntuación actual.";
+    const ok = mode === "level" ? "Sí, reiniciar" : "Sí, empezar";
+    confirmLeave(title, body, ok, restartNow);
   });
+  btnMenu.addEventListener("click", function () {
+    if (over || won || score === 0) { goMenu(); return; }
+    confirmLeave("¿Volver al menú?", "Se perderá esta partida.", "Sí, salir", goMenu);
+  });
+  document.getElementById("btnInfinito").addEventListener("click", startInfinite);
+  document.getElementById("btnNiveles").addEventListener("click", goLevels);
+  document.getElementById("btnBackMenu").addEventListener("click", goMenu);
+  document.getElementById("btnTheme").addEventListener("click", toggleTheme);
 
   window.__figuras = {
     newGame: newGame,
@@ -2274,6 +2907,7 @@
     getBest: function () { return best; },
     isOver: function () { return over; },
     isLocked: function () { return locked; },
+    isWon: function () { return won; },
     setTray: function (p) { tray = p; renderTray(); },
     setBoard: function (b) { board = b; renderBoard(); renderTray(); },
     placeAt: function (index, r, c) { return applyPlacement(index, r, c); },
@@ -2282,12 +2916,27 @@
     getGustCount: function () { return gustCount; },
     getWindState: function () { return windState; },
     endGame: endGame,
+    showMenu: goMenu,
+    startInfinite: startInfinite,
+    startLevel: startLevel,
+    showLevels: goLevels,
+    getMode: function () { return mode; },
+    getLevel: function () { return levelId; },
+    getLevelStats: function () { return Object.assign({}, levelStats); },
+    getTheme: function () { return readTheme(); },
+    setTheme: applyTheme,
+    getProgress: function () { return Object.assign({}, progress); },
+    setProgress: function (p) { progress = p || {}; try { localStorage.setItem(PROG_KEY, JSON.stringify(progress)); } catch (e) {} },
     sound: { isOn: function () { return soundOn; }, hasContext: function () { return Snd.hasContext(); }, state: function () { return Snd.ctxState(); }, unlock: function () { Snd.unlock(); } }
   };
 
+  fillMotes(document.getElementById("menuMotes"), 24);
+  fillMotes(document.getElementById("lvMotes"), 16);
+  applyTheme(readTheme());
+  updateMenuBest();
   buildBoardDom();
   renderScores();
-  newGame();
+  showScreen("menu");
 })();
 </script>
 </body>
