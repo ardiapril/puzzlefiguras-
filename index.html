@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v16 selector de piezas bn/color + menú batalla + bosque píxel -->
+<!-- figuras v17 récord y por poco, sin avisos de mecánica, corazón rojo triángulo verde -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -403,6 +403,73 @@
     color: var(--gold);
     margin: 10px 0 4px;
   }
+  .record-track {
+    height: 7px;
+    margin: -6px 2px 10px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(200,160,56,.25);
+    border-radius: 99px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  [data-theme="light"] .record-track { background: rgba(40,40,30,.12); border-color: rgba(160,120,30,.3); }
+  .record-track[hidden] { display: none !important; }
+  .record-track-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #C8A038, #FFE27A);
+    border-radius: 99px;
+    transition: width .35s ease-out;
+  }
+  .record-track.is-beat .record-track-fill {
+    background: linear-gradient(90deg, #E8C050, #FFF8D0);
+    box-shadow: 0 0 8px rgba(255, 220, 100, .55);
+  }
+  .modal.record-win { position: relative; overflow: hidden; }
+  .modal.record-win h2 {
+    color: #FFE27A;
+    text-shadow: 0 0 18px rgba(255, 210, 80, .55);
+  }
+  [data-theme="light"] .modal.record-win h2 { color: #8A6810; text-shadow: 0 1px 0 #FFF8D8; }
+  .modal .confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .modal.record-win h2,
+  .modal.record-win .bigscore,
+  .modal.record-win .bestline,
+  .modal.record-win .confirm-row { position: relative; z-index: 1; }
+  .modal .confetti i {
+    position: absolute;
+    top: -8px;
+    width: 6px;
+    height: 6px;
+    background: #F0D060;
+    animation: confettiFall 1.15s ease-out forwards;
+  }
+  .modal .confetti i:nth-child(odd) { background: #FFE27A; width: 5px; height: 8px; }
+  .modal .confetti i:nth-child(3n) { background: #E8E4D8; }
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0); opacity: 1; }
+    100% { transform: translateY(220px) rotate(220deg); opacity: 0; }
+  }
+  .modal .faltan {
+    margin: 4px 0 8px;
+    font-weight: 700;
+    font-size: 1.02rem;
+  }
+  .modal .faltan.porpoco { color: var(--gold); }
+  .modal .goalbar {
+    height: 10px;
+    background: rgba(255,255,255,.1);
+    border-radius: 99px;
+    overflow: hidden;
+    margin: 6px 10% 16px;
+  }
+  [data-theme="light"] .modal .goalbar { background: rgba(40,40,30,.12); }
+  .modal .goalbar > i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #C8A038, #FFE27A);
+    border-radius: 99px;
+  }
   .modal .bestline { margin-bottom: 18px; opacity: .75; font-weight: 600; }
   .modal button {
     border: 1px solid var(--board-edge);
@@ -528,6 +595,7 @@
   #banner.show { animation: banner 1.15s ease-out forwards; }
   #banner.wind { background: rgba(180, 210, 220, .92); color: #102028; text-shadow: none; }
   #banner.unlock { background: linear-gradient(180deg, #d4c080, #a88640); color: #2a1e08; text-shadow: 0 1px 0 rgba(255,255,255,.3); }
+  #banner.record { background: linear-gradient(180deg, #F0D060, #C8A038); color: #2A1E08; text-shadow: 0 1px 0 rgba(255,248,216,.45); box-shadow: 0 10px 28px rgba(200,160,56,.45); }
   @keyframes banner {
     0% { transform: translate(-50%, -50%) scale(.6); opacity: 0; }
     15% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
@@ -1105,10 +1173,10 @@
   .sym.s-circle   { filter: drop-shadow(0 0 3px rgba(255,255,255,.35)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
   .sym.s-star     { filter: drop-shadow(0 0 3px rgba(255,255,255,.35)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
   .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(255,255,255,.4)) drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
-  [data-piece-style="color"] .sym.s-triangle { filter: drop-shadow(0 0 3px rgba(255, 120, 70, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-triangle { filter: drop-shadow(0 0 3px rgba(70, 225, 160, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
   [data-piece-style="color"] .sym.s-circle   { filter: drop-shadow(0 0 3px rgba(90, 170, 255, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
   [data-piece-style="color"] .sym.s-star     { filter: drop-shadow(0 0 3px rgba(255, 205, 90, .5))  drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
-  [data-piece-style="color"] .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(70, 225, 160, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
+  [data-piece-style="color"] .sym.s-heart    { filter: drop-shadow(0 0 3px rgba(255, 120, 70, .45)) drop-shadow(0 2px 1.5px rgba(0,0,0,.55)); }
   .cell .sym { inset: 7%; }
   .mini .mcell .sym { inset: 5%; }
   @media (max-width: 380px) {
@@ -1597,6 +1665,7 @@
       <div id="goalEl" class="goal hidden"></div>
       <div class="best" id="bestWrap">Mejor <span id="best">0</span></div>
     </div>
+    <div class="record-track" id="recordTrack" hidden><div class="record-track-fill" id="recordFill"></div></div>
     <div id="boardWrap">
       <div id="board" aria-label="Tablero"></div>
       <div id="fx"></div>
@@ -2253,6 +2322,8 @@
   let tray = [null, null, null];
   let score = 0;
   let best = 0;
+  let bestAtStart = 0;
+  let recordJustBeaten = false;
   let locked = false;
   let over = false;
   let drag = null;
@@ -2547,15 +2618,15 @@
       heart:    { D: "#C8C8CE", M: "#17171A", L: "#3A3A42", H: "#6A6A72" }
     },
     color: {
-      triangle: { D: "#7A2418", M: "#D44A32", L: "#F07858", H: "#FFC8A0" },
+      triangle: { D: "#105A30", M: "#24A858", L: "#50D882", H: "#B4F5C8" },
       circle:   { D: "#123A68", M: "#2A6FA8", L: "#5AA8D8", H: "#C8E8F8" },
       star:     { D: "#785010", M: "#D8A82A", L: "#F0D060", H: "#FFF0B4" },
-      heart:    { D: "#105A30", M: "#24A858", L: "#50D882", H: "#B4F5C8" }
+      heart:    { D: "#7A2418", M: "#D44A32", L: "#F07858", H: "#FFC8A0" }
     }
   };
   const COLOR_PALETTES = {
     bn:    { triangle: "#EDEDF0", circle: "#FFFFFF", star: "#FFFFFF", heart: "#EDEDF0" },
-    color: { triangle: "#D44A32", circle: "#2A6FA8", star: "#D8A82A", heart: "#24A858" }
+    color: { triangle: "#24A858", circle: "#2A6FA8", star: "#D8A82A", heart: "#D44A32" }
   };
   function readPieceStyle() {
     try { return localStorage.getItem(STYLE_KEY) === "color" ? "color" : "bn"; }
@@ -2730,7 +2801,7 @@
   function checkUnlocks() {
     for (let i = 0; i < UNLOCKS.length; i++) {
       const u = UNLOCKS[i];
-      if (!unlocked[u.key] && score >= u.at) { unlocked[u.key] = true; showBanner(u.text, "unlock"); }
+      if (!unlocked[u.key] && score >= u.at) { unlocked[u.key] = true; }
     }
   }
   // Cartel grande en el centro; si llegan varios, salen uno detrás de otro
@@ -2785,22 +2856,44 @@
     }
   }
 
+  function updateRecordBar() {
+    const track = document.getElementById("recordTrack");
+    const fill = document.getElementById("recordFill");
+    if (!track || !fill) return;
+    const show = mode !== "level" && bestAtStart > 0 && !over && !won;
+    track.hidden = !show;
+    if (!show) return;
+    const pct = Math.min(100, Math.round(100 * score / bestAtStart));
+    fill.style.width = pct + "%";
+    track.classList.toggle("is-beat", score >= bestAtStart);
+  }
   function setScore(n) {
     score = n;
     checkUnlocks();
     showScore(score);
     if (mode !== "level" && score > best) {
+      const crossed = !recordJustBeaten && score > bestAtStart;
       best = score;
       bestEl.textContent = String(best);
       updateMenuBest();
       try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+      if (crossed) {
+        recordJustBeaten = true;
+        if (bestAtStart > 0) {
+          showBanner("🏆 ¡Nuevo récord!", "record");
+          try { Snd.combo(2); } catch (e) {}
+          buzz([20, 40, 20, 40, 80]);
+        }
+      }
     }
+    updateRecordBar();
     updateHud();
   }
 
   function renderScores() {
     showScore(score, true);
     bestEl.textContent = String(best);
+    updateRecordBar();
     updateHud();
   }
 
@@ -3226,6 +3319,8 @@
     won = false;
     windState = {};
     unlocked = {};
+    bestAtStart = best;
+    recordJustBeaten = false;
     gustCount = 0;
     levelStats = { moves: 0, groups: 0, lines: 0, stones: 0, combos: 0 };
     bannerQueue.length = 0;
@@ -3380,12 +3475,41 @@
       document.getElementById("btnRetry").addEventListener("click", function () { startLevel(lv.id); });
       return;
     }
+    const isNew = recordJustBeaten || score > bestAtStart;
+    const tied = !isNew && bestAtStart > 0 && score === bestAtStart;
+    const falta = bestAtStart - score;
+    const close = !isNew && bestAtStart > 0 && falta > 0 && falta / bestAtStart <= 0.15;
+    let body = "";
+    if (isNew) {
+      body =
+        '<div class="modal record-win">' +
+          "<h2>¡Nuevo récord!</h2>" +
+          '<div class="bigscore">' + score + " puntos</div>" +
+          (bestAtStart > 0
+            ? '<div class="bestline">Has superado tu marca de ' + bestAtStart + "</div>"
+            : '<div class="bestline">Tu primera marca</div>');
+    } else {
+      let mid = "";
+      if (tied) {
+        mid = '<p class="faltan">Has igualado tu récord</p>';
+      } else if (bestAtStart > 0 && falta > 0) {
+        mid =
+          '<p class="faltan' + (close ? " porpoco" : "") + '">' +
+          (close ? "¡Por poco! " : "") +
+          (falta === 1 ? "Te faltó 1 punto" : ("Te faltaron " + falta)) +
+          " para tu récord</p>" +
+          '<div class="goalbar"><i style="width:' + Math.max(2, Math.min(100, Math.round(100 * score / bestAtStart))) + '%"></i></div>';
+      }
+      body =
+        '<div class="modal">' +
+          "<h2>Fin de la partida</h2>" +
+          "<p>No cabe ninguna pieza</p>" +
+          '<div class="bigscore">' + score + " puntos</div>" +
+          mid +
+          '<div class="bestline">Mejor: ' + best + "</div>";
+    }
     overlayEl.innerHTML =
-      '<div class="modal">' +
-        "<h2>Fin de la partida</h2>" +
-        "<p>No cabe ninguna pieza</p>" +
-        '<div class="bigscore">' + score + " puntos</div>" +
-        '<div class="bestline">Mejor: ' + best + "</div>" +
+      body +
         '<div class="confirm-row">' +
           '<button type="button" class="ghost" id="btnToMenu">Menú</button>' +
           '<button type="button" id="btnAgain">Jugar de nuevo</button>' +
@@ -3719,6 +3843,8 @@
     getTray: function () { return tray; },
     getScore: function () { return score; },
     getBest: function () { return best; },
+    getBestAtStart: function () { return bestAtStart; },
+    didBeatRecord: function () { return recordJustBeaten; },
     isOver: function () { return over; },
     isLocked: function () { return locked; },
     isWon: function () { return won; },
