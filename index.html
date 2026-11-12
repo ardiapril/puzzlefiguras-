@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v19 brillo de explosión al arrastrar -->
+<!-- figuras v20 menos corte con piezas grandes -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -462,7 +462,18 @@
     pointer-events: none;
     z-index: 50;
   }
-  #dragLayer .mini { filter: drop-shadow(0 10px 14px rgba(0,0,0,.35)); }
+  #dragLayer .mini {
+    filter: drop-shadow(0 10px 14px rgba(0,0,0,.35));
+    will-change: transform;
+    contain: layout style;
+  }
+  img.sym {
+    pointer-events: none;
+    -webkit-user-drag: none;
+    user-select: none;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
   #overlay {
     position: fixed;
     inset: 0;
@@ -2747,11 +2758,47 @@
     }
     return s;
   }
-  const SYM_SVG = { triangle: pixSvg("triangle"), circle: pixSvg("circle"), star: pixSvg("star"), heart: pixSvg("heart") };
-  function svgSymbol(name, color) {
-    const shape = SYM_SVG[name] || SYM_SVG.star;
-    return '<svg class="sym s-' + (SYM_SVG[name] ? name : "star") + '" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' + shape + "</svg>";
+  const SYM_SVG = { triangle: "", circle: "", star: "", heart: "" };
+  const SYM_URL = { triangle: "", circle: "", star: "", heart: "" };
+  function rebuildSymCache() {
+    const names = ["triangle", "circle", "star", "heart"];
+    for (let i = 0; i < names.length; i++) {
+      const n = names[i];
+      SYM_SVG[n] = pixSvg(n);
+      const cv = document.createElement("canvas");
+      const scale = 8;
+      cv.width = 16 * scale;
+      cv.height = 16 * scale;
+      const ctx = cv.getContext("2d");
+      ctx.imageSmoothingEnabled = false;
+      const g = PIX[n];
+      const pal = PIX_PAL && PIX_PAL[n];
+      if (g && pal) {
+        for (let y = 0; y < 16; y++) {
+          for (let x = 0; x < 16; x++) {
+            const ch = g[y].charAt(x);
+            if (ch !== "." && pal[ch]) {
+              ctx.fillStyle = pal[ch];
+              ctx.fillRect(x * scale, y * scale, scale, scale);
+            }
+          }
+        }
+      }
+      SYM_URL[n] = cv.toDataURL("image/png");
+    }
+    if (cellEls && cellEls.length) {
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (cellEls[r][c]) cellEls[r][c]._figContent = null;
+        }
+      }
+    }
   }
+  function svgSymbol(name, color) {
+    const ok = SYM_URL[name] ? name : "star";
+    return '<img class="sym s-' + ok + '" src="' + SYM_URL[ok] + '" alt="" draggable="false" aria-hidden="true">';
+  }
+  rebuildSymCache();
 
     // Enredadera dibujada en SVG (tallo curvo + hojas)
   function leaf(x, y, rot, s) {
@@ -2799,46 +2846,48 @@
   function paintCell(r, c, preview, hint) {
     const el = cellEls[r][c];
     const v = board[r][c];
-    el.className = "cell";
+    const kind = hint ? hint.kind : "";
+    const hsym = hint && hint.symbol ? hint.symbol : "";
+    const vsym = v ? v.symbol : "";
+    const trapped = !!(v && v.trapped);
+    const isStone = !!(v && v.symbol === L.STONE);
+    const isVine = !!(v && v.symbol === L.VINE);
+    const ghostSym = (!v && (kind === "match" || kind === "line") && hsym) ? hsym : "";
+    const content = vsym + "|" + (trapped ? 1 : 0) + "|" + (isStone ? "X" : "") + "|" + (isVine ? "V" : "") + "|" + ghostSym;
+    const will = (kind === "match" && hsym) ? (COLOR[hsym] || "#fff") : "";
+    let cls = "cell";
+    if (preview === "ok") cls += " preview-ok";
+    else if (preview === "bad") cls += " preview-bad";
+    if (isStone) cls += " stone";
+    else if (isVine) cls += " vine";
+    else if (v) {
+      cls += " filled";
+      if (trapped) cls += " trapped";
+    }
+    if (kind === "match") {
+      cls += " will-clear";
+      if (ghostSym) cls += " filled will-ghost";
+    } else if (kind === "line") {
+      cls += " will-line";
+      if (ghostSym) cls += " filled will-ghost";
+    } else if (kind === "stone") cls += " will-stone";
+    else if (kind === "vine") cls += " will-vine";
+    el.className = cls;
     el.style.removeProperty("--c");
-    el.style.removeProperty("--will");
+    if (will) el.style.setProperty("--will", will);
+    else el.style.removeProperty("--will");
+    if (el._figContent === content) return;
+    el._figContent = content;
     el.innerHTML = "";
-    if (preview === "ok") el.classList.add("preview-ok");
-    else if (preview === "bad") el.classList.add("preview-bad");
-    if (v && v.symbol === L.STONE) {
-      el.classList.add("stone");
-    } else if (v && v.symbol === L.VINE) {
-      el.classList.add("vine");
+    if (isStone) {
+      /* piedra: solo CSS */
+    } else if (isVine) {
       el.innerHTML = svgVine(false);
     } else if (v) {
-      el.classList.add("filled");
       el.innerHTML = svgSymbol(v.symbol, COLOR[v.symbol] || v.color);
-      if (v.trapped) {
-        el.classList.add("trapped");
-        el.innerHTML += svgVine(true);
-      }
+      if (trapped) el.innerHTML += svgVine(true);
     }
-    if (!hint) return;
-    const kind = hint.kind;
-    const sym = hint.symbol;
-    if (kind === "match") {
-      el.classList.add("will-clear");
-      if (sym) el.style.setProperty("--will", COLOR[sym] || "#fff");
-      if (!v && sym) {
-        el.classList.add("filled", "will-ghost");
-        el.innerHTML = svgSymbol(sym, COLOR[sym] || "#fff");
-      }
-    } else if (kind === "line") {
-      el.classList.add("will-line");
-      if (!v && sym) {
-        el.classList.add("filled", "will-ghost");
-        el.innerHTML = svgSymbol(sym, COLOR[sym] || "#fff");
-      }
-    } else if (kind === "stone") {
-      el.classList.add("will-stone");
-    } else if (kind === "vine") {
-      el.classList.add("will-vine");
-    }
+    if (ghostSym) el.innerHTML = svgSymbol(ghostSym, COLOR[ghostSym] || "#fff");
   }
 
   function cloneBoard(src) {
@@ -3910,11 +3959,26 @@
     const piece = drag.piece;
     const cells = L.pieceCellsAt(piece, at.r, at.c);
     const anyOn = cells.some(function (p) { return L.inBounds(p.r, p.c); });
+    const posKey = at.r + "," + at.c + "," + (anyOn ? 1 : 0) + "," + drag.index;
+    if (posKey === drag.posKey) return;
+    drag.posKey = posKey;
     if (!anyOn) { renderBoard(); drag.target = null; return; }
     const ok = L.canPlace(board, piece, at.r, at.c);
     const hint = ok ? computeClearHint(piece, at.r, at.c) : null;
     renderBoard(cells, ok, hint);
     drag.target = ok ? at : { r: at.r, c: at.c, bad: true };
+  }
+
+  let previewRaf = 0;
+  function schedulePreview() {
+    if (previewRaf) return;
+    previewRaf = requestAnimationFrame(function () {
+      previewRaf = 0;
+      if (drag) updatePreview();
+    });
+  }
+  function cancelPreview() {
+    if (previewRaf) { cancelAnimationFrame(previewRaf); previewRaf = 0; }
   }
 
   function onDown(e) {
@@ -3931,6 +3995,8 @@
     ghost.style.position = "absolute";
     ghost.style.left = "0";
     ghost.style.top = "0";
+    ghost.style.willChange = "transform";
+    ghost.style.pointerEvents = "none";
     dragLayer.innerHTML = "";
     dragLayer.appendChild(ghost);
     const b = pieceBounds(piece);
@@ -3969,13 +4035,14 @@
     e.preventDefault();
     const pt = point(e);
     placeGhost(pt.x, pt.y);
-    updatePreview();
+    schedulePreview();
   }
 
   async function onUp(e) {
     if (!drag) return;
     if (e && e.pointerId != null && drag.pointerId != null && e.pointerId !== drag.pointerId) return;
     if (e) e.preventDefault();
+    cancelPreview();
     const info = drag;
     drag = null;
     dragLayer.innerHTML = "";
@@ -4093,10 +4160,7 @@
     pieceStyle = style;
     PIX_PAL = PIX_PALETTES[style];
     Object.assign(COLOR, COLOR_PALETTES[style]);
-    SYM_SVG.triangle = pixSvg("triangle");
-    SYM_SVG.circle = pixSvg("circle");
-    SYM_SVG.star = pixSvg("star");
-    SYM_SVG.heart = pixSvg("heart");
+    rebuildSymCache();
     document.documentElement.setAttribute("data-piece-style", style);
     try { localStorage.setItem(STYLE_KEY, style); } catch (e) {}
     const bn = document.getElementById("btnStyleBn");
