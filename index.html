@@ -161,6 +161,14 @@
   .cell.trapped {
     box-shadow: inset 0 0 0 2.5px #2fae4a, inset 0 0 10px rgba(47,174,74,.55);
   }
+  .cell.stonegrow {
+    animation: stonegrow .38s ease-out;
+  }
+  @keyframes stonegrow {
+    0% { transform: scale(.25); opacity: 0; }
+    70% { transform: scale(1.14); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
   .cell.vinegrow .vinesvg { animation: vinegrow .32s ease-out; }
   .cell.vinecatch { animation: vinecatch .38s ease-out; }
   .cell.vinecatch .vinesvg { animation: vinegrow .38s ease-out; }
@@ -716,18 +724,76 @@
     }
     return out;
   }
-  function addStones(board, n, rng) {
-    const rnd = rng || Math.random;
+  function countStones(board) {
+    let n = 0;
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (isStone(board[r][c])) n++;
+    return n;
+  }
+  function listStones(board) {
+    const out = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (isStone(board[r][c])) out.push({ r: r, c: c });
+    return out;
+  }
+  function emptyCells(board) {
     const empty = [];
     for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (!board[r][c]) empty.push({ r: r, c: c });
+    return empty;
+  }
+  // Casillas vacías pegadas (arriba/abajo/izquierda/derecha) a alguna piedra
+  function cellsNextToStones(board) {
+    const stones = listStones(board);
+    const seen = Object.create(null);
+    const out = [];
+    for (let i = 0; i < stones.length; i++) {
+      for (let d = 0; d < 4; d++) {
+        const r = stones[i].r + DIRS4[d][0], c = stones[i].c + DIRS4[d][1];
+        const k = r + "," + c;
+        if (inBounds(r, c) && !board[r][c] && !seen[k]) { seen[k] = 1; out.push({ r: r, c: c }); }
+      }
+    }
+    return out;
+  }
+  // Si no hay piedras, nace una. Si ya hay un grupo, cada piedra nueva sale pegada a él.
+  function addStones(board, n, rng, avoid) {
+    const rnd = rng || Math.random;
+    const skip = Object.create(null);
+    if (avoid) for (let i = 0; i < avoid.length; i++) skip[avoid[i].r + "," + avoid[i].c] = 1;
     const added = [];
-    for (let k = 0; k < n && empty.length > 6; k++) {
-      const i = Math.floor(rnd() * empty.length);
-      const p = empty.splice(i, 1)[0];
+    for (let k = 0; k < n; k++) {
+      const empty = emptyCells(board);
+      if (empty.length <= 6) break;
+      const existing = listStones(board);
+      let spots = existing.length ? cellsNextToStones(board) : empty;
+      if (!existing.length) {
+        const preferred = [];
+        for (let i = 0; i < spots.length; i++) {
+          const p = spots[i];
+          if (!skip[p.r + "," + p.c]) preferred.push(p);
+        }
+        if (preferred.length) spots = preferred;
+      }
+      if (!spots.length) break;
+      const p = spots[Math.floor(rnd() * spots.length)];
       board[p.r][p.c] = { symbol: STONE, color: "#8a8f9c" };
       added.push(p);
     }
     return added;
+  }
+  // Si se ha roto el grupo entero, nace una piedra nueva en otro sitio
+  function maybeRespawnStones(board, beforeCount, rng, avoid) {
+    if (beforeCount <= 0 || countStones(board) > 0) return [];
+    return addStones(board, 1, rng, avoid);
+  }
+  function clearedStoneCells(board, matchStoneCells, lineCells) {
+    const out = matchStoneCells.slice();
+    const seen = Object.create(null);
+    for (let i = 0; i < out.length; i++) seen[out[i].r + "," + out[i].c] = 1;
+    for (let i = 0; i < lineCells.length; i++) {
+      const p = lineCells[i];
+      const k = p.r + "," + p.c;
+      if (!seen[k] && isStone(board[p.r][p.c])) { seen[k] = 1; out.push(p); }
+    }
+    return out;
   }
   function makeBoard() {
     return Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -983,13 +1049,16 @@
     extra = (vineCells.length + trappedCells.length) * VINE_PTS;
     return { lines: lines, lineCells: lineCells, nLines: nLines, trappedCells: trappedCells, vineCells: vineCells, pts: lineScore(nLines) + extra };
   }
-  function resolvePlacement(board, piece, r, c) {
+  function resolvePlacement(board, piece, r, c, rng) {
     const placed = placePiece(board, piece, r, c);
     if (!placed) return null;
+    const stoneBefore = countStones(board);
     const m = evalMatches(board, placed);
     const mHit = applyMatches(board, m);
     const l = evalLines(board);
+    const avoidAll = clearedStoneCells(board, m.stoneCells, l.lineCells);
     const lHit = hitCells(board, l.lineCells);
+    const respawnedStones = maybeRespawnStones(board, stoneBefore, rng, avoidAll);
     const vineMoves = moveVines(board);
     const placePts = placeScore(placed.length);
     return {
@@ -1002,6 +1071,7 @@
       lines: l.lines,
       lineCells: l.lineCells,
       vineMoves: vineMoves,
+      respawnedStones: respawnedStones,
       scores: { place: placePts, match: m.pts, line: l.pts, total: placePts + m.pts + l.pts }
     };
   }
@@ -1059,15 +1129,19 @@
     return { dir: dir.name, dr: dir.dr, dc: dir.dc, want: want, moves: moves };
   }
   // Tras la ráfaga: grupos de 4+ que toquen figuras movidas y líneas completas, con puntos normales
-  function resolveWind(board, moves) {
+  function resolveWind(board, moves, rng) {
     const seeds = moves.map(function (m) { return m.to; });
+    const stoneBefore = countStones(board);
     const m = evalMatches(board, seeds, { onlyNew: true });
     const mHit = applyMatches(board, m);
     const l = evalLines(board);
+    const avoidAll = clearedStoneCells(board, m.stoneCells, l.lineCells);
     const lHit = hitCells(board, l.lineCells);
+    const respawnedStones = maybeRespawnStones(board, stoneBefore, rng, avoidAll);
     return {
       groups: m.groups, matchCells: m.matchCells, stoneCells: m.stoneCells, vineCells: m.vineCells,
       freed: mHit.freed.concat(lHit.freed), lines: l.lines, lineCells: l.lineCells,
+      respawnedStones: respawnedStones,
       scores: { match: m.pts, line: l.pts, total: m.pts + l.pts }
     };
   }
@@ -1097,7 +1171,8 @@
     uniqueCells: uniqueCells, clearCells: clearCells, resolvePlacement: resolvePlacement,
     pieceFits: pieceFits, anyFits: anyFits,
     STONE: STONE, MIN_GROUP: MIN_GROUP, STONE_PTS: STONE_PTS, isStone: isStone,
-    stonesNextTo: stonesNextTo, addStones: addStones,
+    stonesNextTo: stonesNextTo, addStones: addStones, countStones: countStones,
+    listStones: listStones, cellsNextToStones: cellsNextToStones, maybeRespawnStones: maybeRespawnStones,
     VINE: VINE, VINE_PTS: VINE_PTS, isVine: isVine, isBlocker: isBlocker, isFigure: isFigure,
     vinesNextTo: vinesNextTo, countVines: countVines, addVine: addVine, moveVines: moveVines,
     hitCells: hitCells, evalMatches: evalMatches, applyMatches: applyMatches, evalLines: evalLines,
@@ -1808,6 +1883,7 @@
       tray = L.generateTrio();
       const sp = L.spawnForTrio(board, score);
       renderBoard();
+      growStoneCells(sp.stones);
       if (sp.vine) cellEls[sp.vine.r][sp.vine.c].classList.add("vinegrow");
       renderTray();
       if (L.gustDue(score, windState)) await doGust();
@@ -1870,6 +1946,7 @@
     }
     await sleep(520);
     // una ráfaga con suerte puede formar un grupo de 4 o una línea
+    const stoneBeforeGust = L.countStones(board);
     const m = L.evalMatches(board, g.moves.map(function (x) { return x.to; }), { onlyNew: true });
     if (m.matchCells.length) {
       const trappedSet = Object.create(null);
@@ -1883,9 +1960,14 @@
     const l = L.evalLines(board);
     const gEvents = m.groups.length + l.nLines;
     if (gEvents >= 2) popCombo(gEvents);
+    const gustBrokenStones = (m.stoneCells || []).slice();
     if (l.lineCells.length) {
       const gTrapped = Object.create(null);
       l.trappedCells.forEach(function (p) { gTrapped[p.r + "," + p.c] = 1; });
+      for (let i = 0; i < l.lineCells.length; i++) {
+        const p = l.lineCells[i];
+        if (L.isStone(board[p.r][p.c])) gustBrokenStones.push(p);
+      }
       fxLines(l, gTrapped);
       await sleep(320);
       L.hitCells(board, l.lineCells);
@@ -1893,6 +1975,7 @@
       renderBoard();
     }
     if (m.matchCells.length || l.lineCells.length) showToast("¡Viento a favor!");
+    await maybeShowRespawn(stoneBeforeGust, gustBrokenStones);
     locked = false;
     return g;
   }
@@ -1928,12 +2011,41 @@
 
   function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
 
+  function growStoneCells(cells) {
+    if (!cells) return;
+    for (let i = 0; i < cells.length; i++) {
+      const p = cells[i];
+      if (cellEls[p.r] && cellEls[p.r][p.c]) cellEls[p.r][p.c].classList.add("stonegrow");
+    }
+  }
+  function countStonesInCells(cells) {
+    let n = 0;
+    if (!cells) return 0;
+    for (let i = 0; i < cells.length; i++) {
+      const p = cells[i];
+      if (board[p.r] && L.isStone(board[p.r][p.c])) n++;
+    }
+    return n;
+  }
+  // Si el grupo de piedras ha desaparecido por completo, nace una en otro sitio
+  async function maybeShowRespawn(stoneBefore, avoid) {
+    const added = L.maybeRespawnStones(board, stoneBefore, null, avoid);
+    if (!added.length) return false;
+    renderBoard();
+    growStoneCells(added);
+    showToast("¡Las piedras aparecen en otro sitio!");
+    beep("stone");
+    await sleep(280);
+    return true;
+  }
+
   async function applyPlacement(index, r, c) {
     const piece = tray[index];
     if (!piece || locked || over) return false;
     if (!L.canPlace(board, piece, r, c)) return false;
     locked = true;
     const placed = L.placePiece(board, piece, r, c);
+    const stoneBefore = L.countStones(board);
     tray[index] = null;
     renderBoard();
     renderTray();
@@ -1964,15 +2076,22 @@
     const linePts = l.pts;
     const events = m.groups.length + nLines;
     if (events >= 2) popCombo(events);   // combo: varias explosiones en una jugada
+    const brokenStones = (m.stoneCells || []).slice();
     if (lineCells.length) {
       const lineTrapped = Object.create(null);
       l.trappedCells.forEach(function (p) { lineTrapped[p.r + "," + p.c] = 1; });
+      for (let i = 0; i < lineCells.length; i++) {
+        const p = lineCells[i];
+        if (L.isStone(board[p.r][p.c])) brokenStones.push(p);
+      }
       fxLines(l, lineTrapped);
       await sleep(320);
       L.hitCells(board, lineCells);
       setScore(score + linePts);
       renderBoard();
     }
+
+    if (await maybeShowRespawn(stoneBefore, brokenStones)) { /* el grupo entero se ha roto y nace en otro sitio */ }
 
     // la enredadera avanza o atrapa una figura
     const moves = L.moveVines(board);
