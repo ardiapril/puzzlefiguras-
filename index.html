@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v26 valle de noche, enredadera -->
+<!-- figuras v33 valle de noche, móvil -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -114,10 +114,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 6px;
     flex-shrink: 0;
   }
   .brand {
+    flex: 1 1 auto;
+    min-width: 0;
     font-family: "Pixelify Sans", "Source Sans 3", system-ui, sans-serif;
     font-weight: 600;
     font-size: 1.35rem;
@@ -130,11 +132,20 @@
     border: 1px solid var(--btn-border);
     background: var(--btn-bg);
     color: var(--btn-fg);
-    font-weight: 700;
-    font-size: .88rem;
-    padding: 7px 12px;
-    border-radius: 3px;
+    font-weight: 800;
+    font-size: .9rem;
+    padding: 0 12px;
+    border-radius: 6px;
     letter-spacing: .02em;
+    min-height: 48px;
+    min-width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
   }
   #btnNew:active, #btnMenu:active { transform: scale(.97); opacity: .85; }
   .scores {
@@ -155,6 +166,22 @@
     text-shadow: 0 0 16px rgba(212,192,128,.25);
   }
   .score .crown { font-size: 1.25rem; filter: drop-shadow(0 2px 0 rgba(0,0,0,.18)); }
+  .save-icon {
+    display: inline-flex;
+    width: 22px;
+    height: 24px;
+    margin-left: 5px;
+    flex-shrink: 0;
+    color: #e8d070;
+    filter: drop-shadow(0 0 5px rgba(255, 220, 100, .45)) drop-shadow(0 1px 0 rgba(0,0,0,.35));
+  }
+  .save-icon.hidden { display: none; }
+  .save-icon.used {
+    color: #8a8678;
+    opacity: .42;
+    filter: grayscale(1) drop-shadow(0 1px 0 rgba(0,0,0,.3));
+  }
+  .save-icon svg { width: 100%; height: 100%; display: block; }
   .best {
     font-weight: 700;
     font-size: .95rem;
@@ -165,9 +192,10 @@
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
     position: relative;
+    padding-bottom: 0;
   }
   #board {
     width: min(100%, calc(100svh - 280px), 400px);
@@ -241,6 +269,52 @@
   @keyframes vinewrapIn {
     0% { opacity: 0; transform: scale(.55); }
     100% { opacity: 1; transform: scale(1); }
+  }
+  .cell.trapped .vine-pips {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    z-index: 6;
+    display: flex;
+    gap: 2px;
+    pointer-events: none;
+    padding: 2px 3px 2px 2px;
+    background: rgba(6, 16, 10, .72);
+    border: 1px solid rgba(20, 40, 24, .9);
+    box-shadow: 0 1px 0 rgba(0,0,0,.4);
+  }
+  .cell.trapped .vine-pips .pip {
+    width: 6px;
+    height: 6px;
+    background: #1a2a1c;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.45);
+  }
+  .cell.trapped .vine-pips .pip.on {
+    background: #7ee89a;
+    box-shadow: 0 0 4px rgba(110, 255, 150, .7), inset 0 0 0 1px rgba(0,0,0,.35);
+  }
+  .cell.trapped .vine-pips .pip.warn {
+    background: #e8f07a;
+    box-shadow: 0 0 5px rgba(230, 255, 120, .85), inset 0 0 0 1px rgba(0,0,0,.35);
+    animation: vinepip 1s ease-in-out infinite;
+  }
+  @keyframes vinepip {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .55; transform: scale(.86); }
+  }
+  .cell.trapped .vinesvg.vinewrap {
+    transition: transform .28s ease, filter .28s ease;
+  }
+  .cell.trapped[data-vine-ticks="2"] .vinesvg.vinewrap {
+    transform: scale(.93);
+  }
+  .cell.trapped[data-vine-ticks="1"] .vinesvg.vinewrap {
+    transform: scale(.86);
+    filter: drop-shadow(0 1.5px 0 rgba(0,0,0,.4)) drop-shadow(0 0 3px rgba(160,255,120,.45));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cell.trapped .vine-pips .pip.warn { animation: none; }
+    .cell.trapped .vinesvg.vinewrap { transition: none; }
   }
   .vinefx {
     position: absolute;
@@ -435,9 +509,10 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    margin-top: 16px;
+    margin-top: 8px;
     min-height: 118px;
   }
+  #app.tuto-open #tray { margin-top: 40px; }
   .slot {
     background: var(--slot);
     border-radius: 6px;
@@ -450,6 +525,39 @@
     position: relative;
   }
   .slot.nofit { opacity: .42; }
+  .slot.salvado {
+    animation: salvadoPulse .55s ease-out;
+    z-index: 2;
+    box-shadow: 0 0 14px rgba(220, 240, 120, .55), 0 0 0 1px rgba(230, 240, 140, .5);
+  }
+  @keyframes salvadoPulse {
+    0% { transform: scale(.82); filter: brightness(1.7); }
+    45% { transform: scale(1.08); filter: brightness(1.25); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+  .slot .save-sparks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    overflow: visible;
+  }
+  .slot .save-sparks i {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    background: #fff8c8;
+    box-shadow: 0 0 6px rgba(255, 250, 180, .9);
+    animation: saveSpark .5s ease-out forwards;
+  }
+  @keyframes saveSpark {
+    0% { transform: scale(.4) translate(0, 0); opacity: 1; }
+    100% { transform: scale(1) translate(var(--sx, 0px), var(--sy, -10px)); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .slot.salvado { animation: none; }
+    .slot .save-sparks i { animation: none; opacity: .7; }
+  }
   .mini {
     display: grid;
     pointer-events: none;
@@ -479,9 +587,88 @@
   
   .slot .rot-hint svg { width: 100%; height: 100%; display: block; }
   .slot.dragging .rot-hint, .slot.nofit .rot-hint { opacity: .35; }
-  .slot .mini { transform-origin: center center; }
-  .slot .mini.turning {
+  .slot .rot-hint.needed {
+    width: 18px;
+    height: 18px;
+    right: 4px;
+    bottom: 4px;
+    color: #f0d45a;
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(255, 220, 90, .85)) drop-shadow(0 1px 0 rgba(0,0,0,.35));
+    animation: rotHintPulse 1.05s ease-in-out infinite;
+  }
+  @keyframes rotHintPulse {
+    0%, 100% { opacity: .55; transform: scale(1) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1.18) rotate(-12deg); }
+  }
+  .tuto-girar {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 16;
+    overflow: visible;
+  }
+  .tuto-girar.hidden { display: none !important; }
+  .tuto-hand {
+    position: absolute;
+    width: 54px;
+    height: 68px;
+    transform-origin: 62% 12%;
+    filter: drop-shadow(0 3px 0 rgba(0,0,0,.4));
+    will-change: transform;
+  }
+  .tuto-hand svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .tuto-girar.on .tuto-hand { animation: tutoHand 3.6s ease-in-out infinite; }
+  @keyframes tutoHand {
+    0%, 6% { transform: translate(0, 0) scale(1); }
+    12% { transform: translate(0, 11px) scale(0.9); }
+    20%, 36% { transform: translate(0, 0) scale(1); }
+    58% { transform: translate(6px, -88px) scale(1); }
+    70% { transform: translate(6px, -100px) scale(0.96); opacity: 0.9; }
+    86%, 100% { transform: translate(0, 0) scale(1); opacity: 1; }
+  }
+  .slot.tuto-target .mini { transform-origin: center center; }
+  .tuto-girar.on .slot.tuto-target .mini { transition: none; animation: tutoSpin 3.6s ease-in-out infinite; }
+  @keyframes tutoSpin {
+    0%, 10% { transform: rotate(0deg); }
+    22%, 72% { transform: rotate(90deg); }
+    88%, 100% { transform: rotate(0deg); }
+  }
+  .tuto-cap {
+    pointer-events: auto;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: pointer;
+    border: 1px solid rgba(230, 220, 170, .35);
+    background: rgba(18, 22, 28, .86);
+    color: #f2ead0;
+    font-weight: 700;
+    font-size: .78rem;
+    letter-spacing: .01em;
+    line-height: 1.25;
+    text-align: center;
+    padding: 7px 12px;
+    border-radius: 999px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.35);
+    text-shadow: 0 1px 0 rgba(0,0,0,.4);
+    white-space: nowrap;
+  }
+  .tuto-cap:active { transform: translateX(-50%) scale(.97); }
+  @media (prefers-reduced-motion: reduce) {
+    .slot .rot-hint.needed { animation: none; opacity: 1; transform: none; }
+    .tuto-girar.on .tuto-hand,
+    .tuto-girar.on .slot.tuto-target .mini { animation: none; }
+  }
+  .slot .mini {
+    transform-origin: center center;
+    transform: rotate(0deg);
     transition: transform 180ms cubic-bezier(.22, .8, .32, 1);
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .slot .mini.turning {
     transform: rotate(90deg);
   }
   .slot.rotating { pointer-events: none; }
@@ -541,6 +728,51 @@
     color: var(--gold);
     margin: 10px 0 4px;
   }
+  .gate-track {
+    position: relative;
+    height: 7px;
+    margin: -2px 10px 20px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(170, 200, 185, .22);
+    border-radius: 99px;
+    flex-shrink: 0;
+  }
+  .gate-track[hidden] { display: none !important; }
+  .gate-track-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4e9a78, #d5ef9a);
+    border-radius: 99px;
+    transition: width .35s ease-out;
+  }
+  .gate-mark {
+    position: absolute;
+    top: -4px;
+    width: 2px;
+    height: 15px;
+    background: rgba(220, 230, 214, .42);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .gate-mark.open {
+    background: #e4f2a8;
+    box-shadow: 0 0 6px rgba(200, 255, 150, .55);
+  }
+  .gate-mark .gate-lab {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+    color: rgba(220, 230, 214, .62);
+    white-space: nowrap;
+    text-shadow: 0 1px 0 rgba(0,0,0,.45);
+  }
+  .gate-mark.is-first .gate-lab { transform: translateX(-10%); }
+  .gate-mark.is-last .gate-lab { transform: translateX(-90%); }
+  .gate-mark.open .gate-lab { color: #e8f6c4; }
   .record-track {
     height: 7px;
     margin: -6px 2px 10px;
@@ -695,6 +927,76 @@
     100% { transform: translate(0, 0) rotate(0); }
   }
   #board.windshake { animation: windshake .5s ease-in-out; }
+
+  .cell.wind-soon {
+    box-shadow: inset 0 0 0 1.5px rgba(255, 220, 120, .55), 0 0 10px rgba(224, 176, 80, .28);
+  }
+  #windMarks {
+    position: absolute;
+    pointer-events: none;
+    z-index: 5;
+    overflow: visible;
+  }
+  #windMarks.hidden, #windCue.hidden { display: none; }
+  .wind-line {
+    position: absolute;
+    border-radius: 3px;
+    background: rgba(255, 220, 120, .12);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 226, 122, .45), 0 0 12px rgba(224, 176, 80, .3);
+    animation: windline 1.1s ease-in-out infinite;
+  }
+  @keyframes windline {
+    0%, 100% { opacity: .7; }
+    50% { opacity: 1; }
+  }
+  .wind-arrow {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    filter: drop-shadow(0 0 6px rgba(255, 220, 100, .9));
+    animation: windpulse 1.1s ease-in-out infinite;
+    z-index: 6;
+  }
+  .wind-arrow::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    background: #FFE27A;
+    clip-path: polygon(0 32%, 54% 32%, 54% 0, 100% 50%, 54% 100%, 54% 68%, 0 68%);
+  }
+  .wind-arrow.left { transform: rotate(180deg); }
+  .wind-arrow.up { transform: rotate(-90deg); }
+  .wind-arrow.down { transform: rotate(90deg); }
+  @keyframes windpulse {
+    0%, 100% { transform: var(--warr, none) translateX(0); filter: drop-shadow(0 0 6px rgba(255, 220, 100, .8)); }
+    50% { transform: var(--warr, none) translateX(2px); filter: drop-shadow(0 0 10px rgba(255, 230, 140, 1)); }
+  }
+  .wind-arrow.left { --warr: rotate(180deg); }
+  .wind-arrow.up { --warr: rotate(-90deg); }
+  .wind-arrow.down { --warr: rotate(90deg); }
+  .wind-arrow.right { --warr: rotate(0deg); }
+  #windCue {
+    position: absolute;
+    transform: translateX(-50%);
+    z-index: 6;
+    pointer-events: none;
+    font-weight: 800;
+    font-size: .78rem;
+    letter-spacing: .04em;
+    color: #2a1e08;
+    background: linear-gradient(180deg, #ffe27a, #e0b050);
+    border: 1px solid rgba(255, 248, 200, .55);
+    box-shadow: 0 0 12px rgba(224, 176, 80, .45), 0 2px 0 rgba(0,0,0,.2);
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    text-shadow: 0 1px 0 rgba(255,248,216,.35);
+  }
+  #windCue span { font-size: 1rem; line-height: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .wind-arrow, .wind-line { animation: none; }
+  }
+
   @keyframes windshake {
     0%, 100% { transform: translate(0, 0); }
     30% { transform: translate(var(--sx, 0px), var(--sy, 0px)); }
@@ -724,6 +1026,12 @@
   #banner.wind { background: rgba(180, 210, 220, .92); color: #102028; text-shadow: none; }
   #banner.unlock { background: linear-gradient(180deg, #d4c080, #a88640); color: #2a1e08; text-shadow: 0 1px 0 rgba(255,255,255,.3); }
   #banner.record { background: linear-gradient(180deg, #F0D060, #C8A038); color: #2A1E08; text-shadow: 0 1px 0 rgba(255,248,216,.45); box-shadow: 0 10px 28px rgba(200,160,56,.45); }
+  #banner.save {
+    background: linear-gradient(180deg, #eef4b4, #b7c65a);
+    color: #243018;
+    text-shadow: 0 1px 0 rgba(255,255,255,.35);
+    box-shadow: 0 10px 28px rgba(160, 200, 70, .4);
+  }
   @keyframes banner {
     0% { transform: translate(-50%, -50%) scale(.6); opacity: 0; }
     15% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
@@ -732,8 +1040,128 @@
     100% { transform: translate(-50%, -62%) scale(.96); opacity: 0; }
   }
 
+
+  #banner.storm {
+    background: linear-gradient(180deg, #3a2a68, #1a1040);
+    color: #efe6ff;
+    border-color: rgba(200, 180, 240, .45);
+    text-shadow: 0 0 14px rgba(180,160,255,.4), 0 2px 0 rgba(0,0,0,.35);
+  }
+  .storm-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    align-self: center;
+    font-weight: 800;
+    font-size: .78rem;
+    letter-spacing: .04em;
+    color: #efe6ff;
+    background: linear-gradient(180deg, rgba(58, 42, 104, .88), rgba(22, 14, 48, .92));
+    border: 1px solid rgba(200, 180, 240, .35);
+    box-shadow: 0 0 14px rgba(120, 90, 200, .28), inset 0 1px 0 rgba(255,255,255,.12);
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    text-shadow: 0 1px 0 rgba(0,0,0,.4);
+    line-height: 1.2;
+  }
+  .storm-badge.hidden { display: none; }
+  .storm-badge.cap {
+    color: #f3ead8;
+    border-color: rgba(224, 176, 80, .5);
+    box-shadow: 0 0 16px rgba(200, 150, 70, .32), inset 0 1px 0 rgba(255,248,220,.16);
+  }
+  .storm-badge.rise { animation: stormrise .75s ease-out; }
+  @keyframes stormrise {
+    0% { transform: scale(.86); filter: brightness(1.45); }
+    45% { transform: scale(1.07); }
+    100% { transform: scale(1); filter: none; }
+  }
+  .storm-badge .storm-mark {
+    width: 11px; height: 11px;
+    display: inline-block;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 35%, #fff8e0 0 28%, transparent 32%),
+      radial-gradient(circle at 50% 60%, #c8b0f0 0 55%, transparent 58%);
+    box-shadow: 0 0 6px rgba(220, 200, 255, .7);
+    flex-shrink: 0;
+  }
+  .storm-badge.cap .storm-mark {
+    background:
+      radial-gradient(circle at 35% 35%, #fff8d8 0 30%, transparent 34%),
+      radial-gradient(circle at 50% 60%, #e0b050 0 55%, transparent 58%);
+    box-shadow: 0 0 7px rgba(224, 176, 80, .75);
+  }
+
+  #banner.calm {
+    background: linear-gradient(180deg, #2a3858, #1a2040);
+    color: #e8e4d8;
+    border-color: rgba(200, 210, 230, .3);
+    text-shadow: 0 0 10px rgba(200, 220, 240, .25), 0 2px 0 rgba(0,0,0,.35);
+    font-size: 1.2rem;
+  }
+  .storm-badge.calm {
+    color: #e8e4d8;
+    background: linear-gradient(180deg, rgba(42, 56, 88, .88), rgba(18, 24, 48, .92));
+    border-color: rgba(200, 210, 230, .28);
+    box-shadow: 0 0 10px rgba(80, 100, 150, .2), inset 0 1px 0 rgba(255,255,255,.1);
+  }
+  .storm-badge.calm .storm-mark {
+    background:
+      radial-gradient(circle at 35% 35%, #fff8e0 0 28%, transparent 32%),
+      radial-gradient(circle at 50% 60%, #c0c8d8 0 55%, transparent 58%);
+    box-shadow: 0 0 6px rgba(220, 230, 240, .55);
+  }
+  #weather {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1.15s ease;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  #atmos.storm #weather { opacity: 1; }
+  .storm-veil {
+    position: absolute; inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: rgba(8, 4, 24, 0);
+    opacity: 0;
+    transition: background .9s ease, opacity .9s ease;
+  }
+  #atmos.storm .storm-veil {
+    opacity: 1;
+    background: rgba(8, 4, 24, var(--storm-veil-a, .26));
+  }
+  #atmos.storm .shafts { opacity: .28; transition: opacity .9s ease; }
+  #atmos .shafts { transition: opacity .9s ease; }
+  #lightningFlash {
+    position: absolute; inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(ellipse 70% 50% at 50% 18%, rgba(255, 224, 96, .48), rgba(224, 176, 80, .14) 45%, transparent 70%);
+  }
+  #lightningFlash.boom { animation: boltflash .32s ease-out; }
+  #lightningFlash.hold { opacity: .3; animation: none; }
+  @keyframes boltflash {
+    0% { opacity: 0; }
+    12% { opacity: .5; }
+    28% { opacity: .14; }
+    48% { opacity: .32; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #lightningFlash.boom { animation: none; opacity: .12; }
+    #weather { transition: opacity .4s ease; }
+  }
+
+
   /* ---- v9: sensación al explotar ---- */
-  .hdr-right { display: flex; align-items: center; gap: 8px; }
+  .hdr-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   #btnSound {
     border: 1px solid var(--btn-border);
     background: var(--btn-bg);
@@ -1302,7 +1730,8 @@
     line-height: 0;
   }
   .brand .logo-sm {
-    width: 112px;
+    width: min(112px, 100%);
+    max-width: 112px;
     height: auto;
     display: block;
     overflow: visible;
@@ -1680,6 +2109,9 @@
     <svg class="trees" viewBox="0 0 160 280" preserveAspectRatio="xMidYMax slice" shape-rendering="crispEdges"><g class="sun"><rect class="sun-halo" x="120" y="22" width="16" height="2"/><rect class="sun-halo" x="116" y="24" width="24" height="2"/><rect class="sun-halo" x="114" y="26" width="28" height="2"/><rect class="sun-halo" x="112" y="28" width="32" height="2"/><rect class="sun-halo" x="110" y="30" width="36" height="2"/><rect class="sun-halo" x="110" y="32" width="36" height="2"/><rect class="sun-halo" x="108" y="34" width="40" height="2"/><rect class="sun-halo" x="108" y="36" width="40" height="2"/><rect class="sun-halo" x="108" y="38" width="40" height="2"/><rect class="sun-halo" x="108" y="40" width="40" height="2"/><rect class="sun-halo" x="106" y="42" width="44" height="2"/><rect class="sun-halo" x="108" y="44" width="40" height="2"/><rect class="sun-halo" x="108" y="46" width="40" height="2"/><rect class="sun-halo" x="108" y="48" width="40" height="2"/><rect class="sun-halo" x="108" y="50" width="40" height="2"/><rect class="sun-halo" x="110" y="52" width="36" height="2"/><rect class="sun-halo" x="110" y="54" width="36" height="2"/><rect class="sun-halo" x="112" y="56" width="32" height="2"/><rect class="sun-halo" x="114" y="58" width="28" height="2"/><rect class="sun-halo" x="116" y="60" width="24" height="2"/><rect class="sun-halo" x="120" y="62" width="16" height="2"/><rect class="sun-mid" x="122" y="30" width="12" height="2"/><rect class="sun-mid" x="120" y="32" width="16" height="2"/><rect class="sun-mid" x="118" y="34" width="20" height="2"/><rect class="sun-mid" x="116" y="36" width="24" height="2"/><rect class="sun-mid" x="116" y="38" width="24" height="2"/><rect class="sun-mid" x="116" y="40" width="24" height="2"/><rect class="sun-mid" x="114" y="42" width="28" height="2"/><rect class="sun-mid" x="116" y="44" width="24" height="2"/><rect class="sun-mid" x="116" y="46" width="24" height="2"/><rect class="sun-mid" x="116" y="48" width="24" height="2"/><rect class="sun-mid" x="118" y="50" width="20" height="2"/><rect class="sun-mid" x="120" y="52" width="16" height="2"/><rect class="sun-mid" x="122" y="54" width="12" height="2"/><rect class="sun-core" x="124" y="34" width="8" height="2"/><rect class="sun-core" x="122" y="36" width="12" height="2"/><rect class="sun-core" x="120" y="38" width="16" height="2"/><rect class="sun-core" x="120" y="40" width="16" height="2"/><rect class="sun-core" x="120" y="42" width="16" height="2"/><rect class="sun-core" x="120" y="44" width="16" height="2"/><rect class="sun-core" x="120" y="46" width="16" height="2"/><rect class="sun-core" x="122" y="48" width="12" height="2"/><rect class="sun-core" x="124" y="50" width="8" height="2"/><rect class="sun-shine" x="122" y="36" width="6" height="6"/></g><g class="night"><rect class="moon" x="48" y="36" width="2" height="2"/><rect class="moon" x="50" y="36" width="2" height="2"/><rect class="moon" x="52" y="36" width="2" height="2"/><rect class="moon-sh" x="54" y="36" width="2" height="2"/><rect class="moon-sh" x="56" y="36" width="2" height="2"/><rect class="moon-lit" x="44" y="38" width="2" height="2"/><rect class="moon-lit" x="46" y="38" width="2" height="2"/><rect class="moon" x="48" y="38" width="2" height="2"/><rect class="moon" x="50" y="38" width="2" height="2"/><rect class="moon" x="52" y="38" width="2" height="2"/><rect class="moon-lit" x="42" y="40" width="2" height="2"/><rect class="moon-lit" x="44" y="40" width="2" height="2"/><rect class="moon-lit" x="46" y="40" width="2" height="2"/><rect class="moon" x="48" y="40" width="2" height="2"/><rect class="moon" x="50" y="40" width="2" height="2"/><rect class="moon-lit" x="40" y="42" width="2" height="2"/><rect class="moon-lit" x="42" y="42" width="2" height="2"/><rect class="moon-lit" x="44" y="42" width="2" height="2"/><rect class="moon-lit" x="46" y="42" width="2" height="2"/><rect class="moon" x="48" y="42" width="2" height="2"/><rect class="moon-lit" x="40" y="44" width="2" height="2"/><rect class="moon-lit" x="42" y="44" width="2" height="2"/><rect class="moon-lit" x="44" y="44" width="2" height="2"/><rect class="moon-lit" x="46" y="44" width="2" height="2"/><rect class="moon" x="48" y="44" width="2" height="2"/><rect class="moon-lit" x="38" y="46" width="2" height="2"/><rect class="moon-lit" x="40" y="46" width="2" height="2"/><rect class="moon-lit" x="42" y="46" width="2" height="2"/><rect class="moon-lit" x="44" y="46" width="2" height="2"/><rect class="moon-lit" x="46" y="46" width="2" height="2"/><rect class="moon" x="48" y="46" width="2" height="2"/><rect class="moon-lit" x="38" y="48" width="2" height="2"/><rect class="moon-lit" x="40" y="48" width="2" height="2"/><rect class="moon-lit" x="42" y="48" width="2" height="2"/><rect class="moon-lit" x="44" y="48" width="2" height="2"/><rect class="moon-lit" x="46" y="48" width="2" height="2"/><rect class="moon" x="48" y="48" width="2" height="2"/><rect class="moon-lit" x="38" y="50" width="2" height="2"/><rect class="moon-lit" x="40" y="50" width="2" height="2"/><rect class="moon-lit" x="42" y="50" width="2" height="2"/><rect class="moon-lit" x="44" y="50" width="2" height="2"/><rect class="moon-lit" x="46" y="50" width="2" height="2"/><rect class="moon" x="48" y="50" width="2" height="2"/><rect class="moon-lit" x="38" y="52" width="2" height="2"/><rect class="moon-lit" x="40" y="52" width="2" height="2"/><rect class="moon-lit" x="42" y="52" width="2" height="2"/><rect class="moon-lit" x="44" y="52" width="2" height="2"/><rect class="moon-lit" x="46" y="52" width="2" height="2"/><rect class="moon" x="48" y="52" width="2" height="2"/><rect class="moon-lit" x="38" y="54" width="2" height="2"/><rect class="moon-lit" x="40" y="54" width="2" height="2"/><rect class="moon-lit" x="42" y="54" width="2" height="2"/><rect class="moon-lit" x="44" y="54" width="2" height="2"/><rect class="moon-lit" x="46" y="54" width="2" height="2"/><rect class="moon" x="48" y="54" width="2" height="2"/><rect class="moon-lit" x="38" y="56" width="2" height="2"/><rect class="moon-lit" x="40" y="56" width="2" height="2"/><rect class="moon-lit" x="42" y="56" width="2" height="2"/><rect class="moon-lit" x="44" y="56" width="2" height="2"/><rect class="moon-lit" x="46" y="56" width="2" height="2"/><rect class="moon" x="48" y="56" width="2" height="2"/><rect class="moon-lit" x="40" y="58" width="2" height="2"/><rect class="moon-lit" x="42" y="58" width="2" height="2"/><rect class="moon-lit" x="44" y="58" width="2" height="2"/><rect class="moon-lit" x="46" y="58" width="2" height="2"/><rect class="moon" x="48" y="58" width="2" height="2"/><rect class="moon" x="50" y="58" width="2" height="2"/><rect class="moon-lit" x="40" y="60" width="2" height="2"/><rect class="moon-lit" x="42" y="60" width="2" height="2"/><rect class="moon-lit" x="44" y="60" width="2" height="2"/><rect class="moon-lit" x="46" y="60" width="2" height="2"/><rect class="moon" x="48" y="60" width="2" height="2"/><rect class="moon" x="50" y="60" width="2" height="2"/><rect class="moon" x="52" y="60" width="2" height="2"/><rect class="moon-lit" x="42" y="62" width="2" height="2"/><rect class="moon-lit" x="44" y="62" width="2" height="2"/><rect class="moon-lit" x="46" y="62" width="2" height="2"/><rect class="moon" x="48" y="62" width="2" height="2"/><rect class="moon" x="50" y="62" width="2" height="2"/><rect class="moon" x="52" y="62" width="2" height="2"/><rect class="moon-sh" x="54" y="62" width="2" height="2"/><rect class="moon-sh" x="56" y="62" width="2" height="2"/><rect class="moon-lit" x="44" y="64" width="2" height="2"/><rect class="moon-lit" x="46" y="64" width="2" height="2"/><rect class="moon" x="48" y="64" width="2" height="2"/><rect class="moon" x="50" y="64" width="2" height="2"/><rect class="moon" x="52" y="64" width="2" height="2"/><rect class="moon-sh" x="54" y="64" width="2" height="2"/><rect class="moon-sh" x="56" y="64" width="2" height="2"/><rect class="moon-sh" x="58" y="64" width="2" height="2"/><rect class="moon-sh" x="60" y="64" width="2" height="2"/><rect class="moon-sh" x="62" y="64" width="2" height="2"/><rect class="moon" x="48" y="66" width="2" height="2"/><rect class="moon" x="50" y="66" width="2" height="2"/><rect class="moon" x="52" y="66" width="2" height="2"/><rect class="moon-sh" x="54" y="66" width="2" height="2"/><rect class="moon-sh" x="56" y="66" width="2" height="2"/><rect class="moon-sh" x="58" y="66" width="2" height="2"/><rect class="dstar" x="100" y="36" width="2" height="2"/><rect class="dstar" x="98" y="36" width="2" height="2" opacity=".55"/><rect class="dstar" x="102" y="36" width="2" height="2" opacity=".55"/><rect class="dstar" x="100" y="34" width="2" height="2" opacity=".55"/><rect class="dstar" x="100" y="38" width="2" height="2" opacity=".55"/><rect class="dstar" x="118" y="54" width="2" height="2"/><rect class="dstar" x="90" y="28" width="2" height="2"/><rect class="dstar" x="130" y="40" width="2" height="2"/><rect class="dstar" x="128" y="40" width="2" height="2" opacity=".55"/><rect class="dstar" x="132" y="40" width="2" height="2" opacity=".55"/><rect class="dstar" x="130" y="38" width="2" height="2" opacity=".55"/><rect class="dstar" x="130" y="42" width="2" height="2" opacity=".55"/><rect class="dstar" x="84" y="58" width="2" height="2"/><rect class="dstar" x="108" y="70" width="2" height="2"/><rect class="dstar" x="36" y="36" width="2" height="2"/><rect class="dstar" x="140" y="60" width="2" height="2"/><rect class="dstar" x="138" y="60" width="2" height="2" opacity=".55"/><rect class="dstar" x="142" y="60" width="2" height="2" opacity=".55"/><rect class="dstar" x="140" y="58" width="2" height="2" opacity=".55"/><rect class="dstar" x="140" y="62" width="2" height="2" opacity=".55"/><rect class="dstar" x="74" y="32" width="2" height="2"/></g><g class="clouds"><rect class="cloud-sh" x="26" y="47" width="20" height="2"/><rect class="cloud-sh" x="22" y="49" width="28" height="2"/><rect class="cloud-sh" x="20" y="51" width="32" height="2"/><rect class="cloud-sh" x="18" y="53" width="36" height="2"/><rect class="cloud-sh" x="20" y="55" width="32" height="2"/><rect class="cloud-sh" x="22" y="57" width="28" height="2"/><rect class="cloud-sh" x="26" y="59" width="20" height="2"/><rect class="cloud" x="20" y="44" width="12" height="2"/><rect class="cloud" x="16" y="46" width="20" height="2"/><rect class="cloud" x="16" y="48" width="20" height="2"/><rect class="cloud" x="14" y="50" width="24" height="2"/><rect class="cloud" x="16" y="52" width="20" height="2"/><rect class="cloud" x="16" y="54" width="20" height="2"/><rect class="cloud" x="20" y="56" width="12" height="2"/><rect class="cloud" x="40" y="45" width="8" height="2"/><rect class="cloud" x="36" y="47" width="16" height="2"/><rect class="cloud" x="34" y="49" width="20" height="2"/><rect class="cloud" x="34" y="51" width="20" height="2"/><rect class="cloud" x="34" y="53" width="20" height="2"/><rect class="cloud" x="36" y="55" width="16" height="2"/><rect class="cloud" x="40" y="57" width="8" height="2"/><rect class="cloud" x="30" y="39" width="12" height="2"/><rect class="cloud" x="26" y="41" width="20" height="2"/><rect class="cloud" x="24" y="43" width="24" height="2"/><rect class="cloud" x="24" y="45" width="24" height="2"/><rect class="cloud" x="22" y="47" width="28" height="2"/><rect class="cloud" x="24" y="49" width="24" height="2"/><rect class="cloud" x="24" y="51" width="24" height="2"/><rect class="cloud" x="26" y="53" width="20" height="2"/><rect class="cloud" x="30" y="55" width="12" height="2"/><rect class="cloud-sh" x="80" y="37" width="16" height="2"/><rect class="cloud-sh" x="76" y="39" width="24" height="2"/><rect class="cloud-sh" x="76" y="41" width="24" height="2"/><rect class="cloud-sh" x="76" y="43" width="24" height="2"/><rect class="cloud-sh" x="80" y="45" width="16" height="2"/><rect class="cloud" x="75" y="34" width="12" height="2"/><rect class="cloud" x="73" y="36" width="16" height="2"/><rect class="cloud" x="73" y="38" width="16" height="2"/><rect class="cloud" x="73" y="40" width="16" height="2"/><rect class="cloud" x="75" y="42" width="12" height="2"/><rect class="cloud" x="90" y="35" width="8" height="2"/><rect class="cloud" x="88" y="37" width="12" height="2"/><rect class="cloud" x="86" y="39" width="16" height="2"/><rect class="cloud" x="88" y="41" width="12" height="2"/><rect class="cloud" x="90" y="43" width="8" height="2"/><rect class="cloud" x="82" y="31" width="12" height="2"/><rect class="cloud" x="80" y="33" width="16" height="2"/><rect class="cloud" x="78" y="35" width="20" height="2"/><rect class="cloud" x="80" y="37" width="16" height="2"/><rect class="cloud" x="82" y="39" width="12" height="2"/><rect class="cloud-sh" x="52" y="65" width="12" height="2"/><rect class="cloud-sh" x="50" y="67" width="16" height="2"/><rect class="cloud-sh" x="52" y="69" width="12" height="2"/><rect class="cloud" x="49" y="62" width="8" height="2"/><rect class="cloud" x="47" y="64" width="12" height="2"/><rect class="cloud" x="49" y="66" width="8" height="2"/><rect class="cloud" x="58" y="63" width="8" height="2"/><rect class="cloud" x="56" y="65" width="12" height="2"/><rect class="cloud" x="58" y="67" width="8" height="2"/><rect class="cloud" x="52" y="59" width="12" height="2"/><rect class="cloud" x="52" y="61" width="12" height="2"/><rect class="cloud" x="52" y="63" width="12" height="2"/><rect class="cloud-sh" x="142" y="69" width="12" height="2"/><rect class="cloud-sh" x="138" y="71" width="20" height="2"/><rect class="cloud-sh" x="136" y="73" width="24" height="2"/><rect class="cloud-sh" x="138" y="75" width="20" height="2"/><rect class="cloud-sh" x="142" y="77" width="12" height="2"/><rect class="cloud" x="137" y="66" width="8" height="2"/><rect class="cloud" x="135" y="68" width="12" height="2"/><rect class="cloud" x="133" y="70" width="16" height="2"/><rect class="cloud" x="135" y="72" width="12" height="2"/><rect class="cloud" x="137" y="74" width="8" height="2"/><rect class="cloud" x="147" y="69" width="12" height="2"/><rect class="cloud" x="147" y="71" width="12" height="2"/><rect class="cloud" x="147" y="73" width="12" height="2"/><rect class="cloud" x="142" y="63" width="12" height="2"/><rect class="cloud" x="140" y="65" width="16" height="2"/><rect class="cloud" x="140" y="67" width="16" height="2"/><rect class="cloud" x="140" y="69" width="16" height="2"/><rect class="cloud" x="142" y="71" width="12" height="2"/></g><g class="far"><rect class="far" x="0" y="152" width="4" height="128"/><rect class="far" x="4" y="151" width="2" height="129"/><rect class="far" x="6" y="150" width="2" height="130"/><rect class="far" x="8" y="149" width="2" height="131"/><rect class="far" x="10" y="147" width="2" height="133"/><rect class="far" x="12" y="146" width="2" height="134"/><rect class="far" x="14" y="145" width="2" height="135"/><rect class="far" x="16" y="144" width="6" height="136"/><rect class="far" x="22" y="142" width="2" height="138"/><rect class="far" x="24" y="141" width="2" height="139"/><rect class="far" x="26" y="139" width="2" height="141"/><rect class="far" x="28" y="137" width="2" height="143"/><rect class="far" x="30" y="135" width="2" height="145"/><rect class="far" x="32" y="134" width="2" height="146"/><rect class="far" x="34" y="132" width="6" height="148"/><rect class="far" x="40" y="133" width="2" height="147"/><rect class="far" x="42" y="134" width="2" height="146"/><rect class="far" x="44" y="135" width="2" height="145"/><rect class="far" x="46" y="136" width="2" height="144"/><rect class="far" x="48" y="137" width="2" height="143"/><rect class="far" x="50" y="138" width="6" height="142"/><rect class="far" x="56" y="139" width="2" height="141"/><rect class="far" x="58" y="141" width="2" height="139"/><rect class="far" x="60" y="142" width="2" height="138"/><rect class="far" x="62" y="144" width="2" height="136"/><rect class="far" x="64" y="145" width="2" height="135"/><rect class="far" x="66" y="147" width="2" height="133"/><rect class="far" x="68" y="148" width="6" height="132"/><rect class="far" x="74" y="147" width="2" height="133"/><rect class="far" x="76" y="146" width="2" height="134"/><rect class="far" x="78" y="144" width="2" height="136"/><rect class="far" x="80" y="143" width="2" height="137"/><rect class="far" x="82" y="141" width="2" height="139"/><rect class="far" x="84" y="140" width="2" height="140"/><rect class="far" x="86" y="138" width="2" height="142"/><rect class="far" x="88" y="137" width="2" height="143"/><rect class="far" x="90" y="136" width="6" height="144"/><rect class="far" x="96" y="135" width="4" height="145"/><rect class="far" x="100" y="134" width="2" height="146"/><rect class="far" x="102" y="133" width="4" height="147"/><rect class="far" x="106" y="132" width="2" height="148"/><rect class="far" x="108" y="131" width="4" height="149"/><rect class="far" x="112" y="130" width="6" height="150"/><rect class="far" x="118" y="131" width="2" height="149"/><rect class="far" x="120" y="133" width="2" height="147"/><rect class="far" x="122" y="134" width="2" height="146"/><rect class="far" x="124" y="136" width="2" height="144"/><rect class="far" x="126" y="137" width="2" height="143"/><rect class="far" x="128" y="139" width="2" height="141"/><rect class="far" x="130" y="140" width="6" height="140"/><rect class="far" x="136" y="141" width="4" height="139"/><rect class="far" x="140" y="142" width="2" height="138"/><rect class="far" x="142" y="143" width="2" height="137"/><rect class="far" x="144" y="144" width="2" height="136"/><rect class="far" x="146" y="145" width="2" height="135"/><rect class="far" x="148" y="146" width="2" height="134"/><rect class="far" x="150" y="147" width="2" height="133"/><rect class="far" x="152" y="148" width="2" height="132"/><rect class="far" x="154" y="149" width="4" height="131"/><rect class="far" x="158" y="150" width="2" height="130"/></g><g class="mid"><rect class="mid" x="0" y="176" width="4" height="104"/><rect class="mid" x="4" y="175" width="4" height="105"/><rect class="mid" x="8" y="174" width="2" height="106"/><rect class="mid" x="10" y="173" width="2" height="107"/><rect class="mid" x="12" y="171" width="2" height="109"/><rect class="mid" x="14" y="170" width="2" height="110"/><rect class="mid" x="16" y="169" width="4" height="111"/><rect class="mid" x="20" y="168" width="6" height="112"/><rect class="mid" x="26" y="169" width="4" height="111"/><rect class="mid" x="30" y="170" width="2" height="110"/><rect class="mid" x="32" y="171" width="4" height="109"/><rect class="mid" x="36" y="172" width="2" height="108"/><rect class="mid" x="38" y="173" width="4" height="107"/><rect class="mid" x="42" y="174" width="6" height="106"/><rect class="mid" x="48" y="173" width="2" height="107"/><rect class="mid" x="50" y="172" width="2" height="108"/><rect class="mid" x="52" y="171" width="2" height="109"/><rect class="mid" x="54" y="169" width="2" height="111"/><rect class="mid" x="56" y="168" width="2" height="112"/><rect class="mid" x="58" y="167" width="2" height="113"/><rect class="mid" x="60" y="165" width="2" height="115"/><rect class="mid" x="62" y="164" width="2" height="116"/><rect class="mid" x="64" y="163" width="2" height="117"/><rect class="mid" x="66" y="162" width="8" height="118"/><rect class="mid" x="74" y="163" width="2" height="117"/><rect class="mid" x="76" y="164" width="4" height="116"/><rect class="mid" x="80" y="165" width="2" height="115"/><rect class="mid" x="82" y="166" width="2" height="114"/><rect class="mid" x="84" y="167" width="2" height="113"/><rect class="mid" x="86" y="168" width="4" height="112"/><rect class="mid" x="90" y="169" width="2" height="111"/><rect class="mid" x="92" y="170" width="8" height="110"/><rect class="mid" x="100" y="169" width="4" height="111"/><rect class="mid" x="104" y="168" width="2" height="112"/><rect class="mid" x="106" y="167" width="2" height="113"/><rect class="mid" x="108" y="166" width="2" height="114"/><rect class="mid" x="110" y="164" width="2" height="116"/><rect class="mid" x="112" y="163" width="2" height="117"/><rect class="mid" x="114" y="162" width="2" height="118"/><rect class="mid" x="116" y="161" width="4" height="119"/><rect class="mid" x="120" y="160" width="6" height="120"/><rect class="mid" x="126" y="161" width="4" height="119"/><rect class="mid" x="130" y="162" width="2" height="118"/><rect class="mid" x="132" y="163" width="2" height="117"/><rect class="mid" x="134" y="165" width="2" height="115"/><rect class="mid" x="136" y="166" width="2" height="114"/><rect class="mid" x="138" y="167" width="4" height="113"/><rect class="mid" x="142" y="168" width="6" height="112"/><rect class="mid" x="148" y="169" width="2" height="111"/><rect class="mid" x="150" y="170" width="2" height="110"/><rect class="mid" x="152" y="171" width="2" height="109"/><rect class="mid" x="154" y="172" width="2" height="108"/><rect class="mid" x="156" y="173" width="2" height="107"/><rect class="mid" x="158" y="174" width="2" height="106"/></g><g class="near"><rect class="near" x="0" y="204" width="6" height="76"/><rect class="near" x="6" y="203" width="4" height="77"/><rect class="near" x="10" y="202" width="4" height="78"/><rect class="near" x="14" y="201" width="4" height="79"/><rect class="near" x="18" y="200" width="4" height="80"/><rect class="near" x="22" y="199" width="4" height="81"/><rect class="near" x="26" y="198" width="14" height="82"/><rect class="near" x="40" y="199" width="8" height="81"/><rect class="near" x="48" y="200" width="6" height="80"/><rect class="near" x="54" y="201" width="8" height="79"/><rect class="near" x="62" y="202" width="14" height="78"/><rect class="near" x="76" y="201" width="4" height="79"/><rect class="near" x="80" y="200" width="4" height="80"/><rect class="near" x="84" y="199" width="4" height="81"/><rect class="near" x="88" y="198" width="4" height="82"/><rect class="near" x="92" y="197" width="4" height="83"/><rect class="near" x="96" y="196" width="12" height="84"/><rect class="near" x="108" y="197" width="6" height="83"/><rect class="near" x="114" y="198" width="4" height="82"/><rect class="near" x="118" y="199" width="6" height="81"/><rect class="near" x="124" y="200" width="16" height="80"/><rect class="near" x="140" y="199" width="12" height="81"/><rect class="near" x="152" y="198" width="8" height="82"/></g><g class="trees-far"><rect class="trunk" x="17" y="162" width="2" height="12"/><rect class="trunk-sh" x="17" y="162" width="2" height="12"/><rect class="leaf-sh" x="17" y="158" width="8" height="2"/><rect class="leaf-sh" x="15" y="160" width="12" height="2"/><rect class="leaf-sh" x="15" y="162" width="12" height="2"/><rect class="leaf-sh" x="15" y="164" width="12" height="2"/><rect class="leaf-sh" x="17" y="166" width="8" height="2"/><rect class="leaf" x="14" y="152" width="8" height="2"/><rect class="leaf" x="12" y="154" width="12" height="2"/><rect class="leaf" x="12" y="156" width="12" height="2"/><rect class="leaf" x="10" y="158" width="16" height="2"/><rect class="leaf" x="12" y="160" width="12" height="2"/><rect class="leaf" x="12" y="162" width="12" height="2"/><rect class="leaf" x="14" y="164" width="8" height="2"/><rect class="leaf" x="12" y="157" width="4" height="2"/><rect class="leaf" x="10" y="159" width="8" height="2"/><rect class="leaf" x="10" y="161" width="8" height="2"/><rect class="leaf" x="10" y="163" width="8" height="2"/><rect class="leaf" x="12" y="165" width="4" height="2"/><rect class="leaf-sh" x="20" y="159" width="4" height="2"/><rect class="leaf-sh" x="20" y="161" width="4" height="2"/><rect class="leaf-sh" x="18" y="163" width="8" height="2"/><rect class="leaf-sh" x="20" y="165" width="4" height="2"/><rect class="leaf-sh" x="20" y="167" width="4" height="2"/><rect class="leaf" x="12" y="153" width="4" height="2"/><rect class="leaf" x="10" y="155" width="8" height="2"/><rect class="leaf" x="12" y="157" width="4" height="2"/><rect class="trunk" x="49" y="159" width="2" height="11"/><rect class="trunk-sh" x="49" y="159" width="2" height="11"/><rect class="leaf-sh" x="51" y="156" width="4" height="2"/><rect class="leaf-sh" x="49" y="158" width="8" height="2"/><rect class="leaf-sh" x="47" y="160" width="12" height="2"/><rect class="leaf-sh" x="49" y="162" width="8" height="2"/><rect class="leaf-sh" x="51" y="164" width="4" height="2"/><rect class="leaf" x="48" y="150" width="4" height="2"/><rect class="leaf" x="46" y="152" width="8" height="2"/><rect class="leaf" x="44" y="154" width="12" height="2"/><rect class="leaf" x="44" y="156" width="12" height="2"/><rect class="leaf" x="44" y="158" width="12" height="2"/><rect class="leaf" x="46" y="160" width="8" height="2"/><rect class="leaf" x="48" y="162" width="4" height="2"/><rect class="leaf" x="45" y="157" width="4" height="2"/><rect class="leaf" x="43" y="159" width="8" height="2"/><rect class="leaf" x="45" y="161" width="4" height="2"/><rect class="leaf-sh" x="51" y="159" width="4" height="2"/><rect class="leaf-sh" x="49" y="161" width="8" height="2"/><rect class="leaf-sh" x="51" y="163" width="4" height="2"/><rect class="leaf" x="44" y="151" width="4" height="2"/><rect class="leaf" x="44" y="153" width="4" height="2"/><rect class="leaf" x="44" y="155" width="4" height="2"/><rect class="trunk" x="107" y="154" width="2" height="12"/><rect class="trunk-sh" x="107" y="154" width="2" height="12"/><rect class="leaf-sh" x="107" y="150" width="8" height="2"/><rect class="leaf-sh" x="105" y="152" width="12" height="2"/><rect class="leaf-sh" x="105" y="154" width="12" height="2"/><rect class="leaf-sh" x="105" y="156" width="12" height="2"/><rect class="leaf-sh" x="107" y="158" width="8" height="2"/><rect class="leaf" x="104" y="144" width="8" height="2"/><rect class="leaf" x="102" y="146" width="12" height="2"/><rect class="leaf" x="102" y="148" width="12" height="2"/><rect class="leaf" x="100" y="150" width="16" height="2"/><rect class="leaf" x="102" y="152" width="12" height="2"/><rect class="leaf" x="102" y="154" width="12" height="2"/><rect class="leaf" x="104" y="156" width="8" height="2"/><rect class="leaf" x="102" y="149" width="4" height="2"/><rect class="leaf" x="100" y="151" width="8" height="2"/><rect class="leaf" x="100" y="153" width="8" height="2"/><rect class="leaf" x="100" y="155" width="8" height="2"/><rect class="leaf" x="102" y="157" width="4" height="2"/><rect class="leaf-sh" x="110" y="151" width="4" height="2"/><rect class="leaf-sh" x="110" y="153" width="4" height="2"/><rect class="leaf-sh" x="108" y="155" width="8" height="2"/><rect class="leaf-sh" x="110" y="157" width="4" height="2"/><rect class="leaf-sh" x="110" y="159" width="4" height="2"/><rect class="leaf" x="102" y="145" width="4" height="2"/><rect class="leaf" x="100" y="147" width="8" height="2"/><rect class="leaf" x="102" y="149" width="4" height="2"/><rect class="trunk" x="141" y="161" width="2" height="11"/><rect class="trunk-sh" x="141" y="161" width="2" height="11"/><rect class="leaf-sh" x="143" y="158" width="4" height="2"/><rect class="leaf-sh" x="141" y="160" width="8" height="2"/><rect class="leaf-sh" x="139" y="162" width="12" height="2"/><rect class="leaf-sh" x="141" y="164" width="8" height="2"/><rect class="leaf-sh" x="143" y="166" width="4" height="2"/><rect class="leaf" x="140" y="152" width="4" height="2"/><rect class="leaf" x="138" y="154" width="8" height="2"/><rect class="leaf" x="136" y="156" width="12" height="2"/><rect class="leaf" x="136" y="158" width="12" height="2"/><rect class="leaf" x="136" y="160" width="12" height="2"/><rect class="leaf" x="138" y="162" width="8" height="2"/><rect class="leaf" x="140" y="164" width="4" height="2"/><rect class="leaf" x="137" y="159" width="4" height="2"/><rect class="leaf" x="135" y="161" width="8" height="2"/><rect class="leaf" x="137" y="163" width="4" height="2"/><rect class="leaf-sh" x="143" y="161" width="4" height="2"/><rect class="leaf-sh" x="141" y="163" width="8" height="2"/><rect class="leaf-sh" x="143" y="165" width="4" height="2"/><rect class="leaf" x="136" y="153" width="4" height="2"/><rect class="leaf" x="136" y="155" width="4" height="2"/><rect class="leaf" x="136" y="157" width="4" height="2"/></g><g class="trees-mid"><rect class="trunk" x="12" y="188" width="4" height="20"/><rect class="trunk-sh" x="14" y="188" width="2" height="20"/><rect class="leaf-sh" x="11" y="172" width="12" height="2"/><rect class="leaf-sh" x="9" y="174" width="16" height="2"/><rect class="leaf-sh" x="7" y="176" width="20" height="2"/><rect class="leaf-sh" x="5" y="178" width="24" height="2"/><rect class="leaf-sh" x="5" y="180" width="24" height="2"/><rect class="leaf-sh" x="5" y="182" width="24" height="2"/><rect class="leaf-sh" x="5" y="184" width="24" height="2"/><rect class="leaf-sh" x="5" y="186" width="24" height="2"/><rect class="leaf-sh" x="7" y="188" width="20" height="2"/><rect class="leaf-sh" x="9" y="190" width="16" height="2"/><rect class="leaf-sh" x="11" y="192" width="12" height="2"/><rect class="leaf" x="8" y="166" width="12" height="2"/><rect class="leaf" x="6" y="168" width="16" height="2"/><rect class="leaf" x="4" y="170" width="20" height="2"/><rect class="leaf" x="2" y="172" width="24" height="2"/><rect class="leaf" x="2" y="174" width="24" height="2"/><rect class="leaf" x="2" y="176" width="24" height="2"/><rect class="leaf" x="0" y="178" width="28" height="2"/><rect class="leaf" x="2" y="180" width="24" height="2"/><rect class="leaf" x="2" y="182" width="24" height="2"/><rect class="leaf" x="2" y="184" width="24" height="2"/><rect class="leaf" x="4" y="186" width="20" height="2"/><rect class="leaf" x="6" y="188" width="16" height="2"/><rect class="leaf" x="8" y="190" width="12" height="2"/><rect class="leaf" x="0" y="173" width="8" height="2"/><rect class="leaf" x="-2" y="175" width="12" height="2"/><rect class="leaf" x="-4" y="177" width="16" height="2"/><rect class="leaf" x="-4" y="179" width="16" height="2"/><rect class="leaf" x="-4" y="181" width="16" height="2"/><rect class="leaf" x="-4" y="183" width="16" height="2"/><rect class="leaf" x="-4" y="185" width="16" height="2"/><rect class="leaf" x="-2" y="187" width="12" height="2"/><rect class="leaf" x="0" y="189" width="8" height="2"/><rect class="leaf-sh" x="22" y="175" width="4" height="2"/><rect class="leaf-sh" x="20" y="177" width="8" height="2"/><rect class="leaf-sh" x="18" y="179" width="12" height="2"/><rect class="leaf-sh" x="18" y="181" width="12" height="2"/><rect class="leaf-sh" x="16" y="183" width="16" height="2"/><rect class="leaf-sh" x="18" y="185" width="12" height="2"/><rect class="leaf-sh" x="18" y="187" width="12" height="2"/><rect class="leaf-sh" x="20" y="189" width="8" height="2"/><rect class="leaf-sh" x="22" y="191" width="4" height="2"/><rect class="leaf-lit" x="8" y="169" width="4" height="2"/><rect class="leaf-lit" x="6" y="171" width="8" height="2"/><rect class="leaf-lit" x="4" y="173" width="12" height="2"/><rect class="leaf-lit" x="4" y="175" width="12" height="2"/><rect class="leaf-lit" x="4" y="177" width="12" height="2"/><rect class="leaf-lit" x="6" y="179" width="8" height="2"/><rect class="leaf-lit" x="8" y="181" width="4" height="2"/><rect class="trunk" x="34" y="188" width="4" height="16"/><rect class="trunk-sh" x="36" y="188" width="2" height="16"/><rect class="leaf-sh" x="35" y="177" width="8" height="2"/><rect class="leaf-sh" x="33" y="179" width="12" height="2"/><rect class="leaf-sh" x="31" y="181" width="16" height="2"/><rect class="leaf-sh" x="31" y="183" width="16" height="2"/><rect class="leaf-sh" x="29" y="185" width="20" height="2"/><rect class="leaf-sh" x="31" y="187" width="16" height="2"/><rect class="leaf-sh" x="31" y="189" width="16" height="2"/><rect class="leaf-sh" x="33" y="191" width="12" height="2"/><rect class="leaf-sh" x="35" y="193" width="8" height="2"/><rect class="leaf" x="32" y="171" width="8" height="2"/><rect class="leaf" x="30" y="173" width="12" height="2"/><rect class="leaf" x="28" y="175" width="16" height="2"/><rect class="leaf" x="26" y="177" width="20" height="2"/><rect class="leaf" x="26" y="179" width="20" height="2"/><rect class="leaf" x="26" y="181" width="20" height="2"/><rect class="leaf" x="26" y="183" width="20" height="2"/><rect class="leaf" x="26" y="185" width="20" height="2"/><rect class="leaf" x="28" y="187" width="16" height="2"/><rect class="leaf" x="30" y="189" width="12" height="2"/><rect class="leaf" x="32" y="191" width="8" height="2"/><rect class="leaf" x="27" y="178" width="4" height="2"/><rect class="leaf" x="25" y="180" width="8" height="2"/><rect class="leaf" x="23" y="182" width="12" height="2"/><rect class="leaf" x="23" y="184" width="12" height="2"/><rect class="leaf" x="23" y="186" width="12" height="2"/><rect class="leaf" x="25" y="188" width="8" height="2"/><rect class="leaf" x="27" y="190" width="4" height="2"/><rect class="leaf-sh" x="41" y="180" width="4" height="2"/><rect class="leaf-sh" x="39" y="182" width="8" height="2"/><rect class="leaf-sh" x="39" y="184" width="8" height="2"/><rect class="leaf-sh" x="37" y="186" width="12" height="2"/><rect class="leaf-sh" x="39" y="188" width="8" height="2"/><rect class="leaf-sh" x="39" y="190" width="8" height="2"/><rect class="leaf-sh" x="41" y="192" width="4" height="2"/><rect class="leaf-lit" x="30" y="174" width="4" height="2"/><rect class="leaf-lit" x="28" y="176" width="8" height="2"/><rect class="leaf-lit" x="26" y="178" width="12" height="2"/><rect class="leaf-lit" x="28" y="180" width="8" height="2"/><rect class="leaf-lit" x="30" y="182" width="4" height="2"/><rect class="trunk" x="124" y="184" width="4" height="18"/><rect class="trunk-sh" x="126" y="184" width="2" height="18"/><rect class="leaf-sh" x="123" y="172" width="12" height="2"/><rect class="leaf-sh" x="121" y="174" width="16" height="2"/><rect class="leaf-sh" x="119" y="176" width="20" height="2"/><rect class="leaf-sh" x="119" y="178" width="20" height="2"/><rect class="leaf-sh" x="119" y="180" width="20" height="2"/><rect class="leaf-sh" x="119" y="182" width="20" height="2"/><rect class="leaf-sh" x="119" y="184" width="20" height="2"/><rect class="leaf-sh" x="121" y="186" width="16" height="2"/><rect class="leaf-sh" x="123" y="188" width="12" height="2"/><rect class="leaf" x="120" y="166" width="12" height="2"/><rect class="leaf" x="118" y="168" width="16" height="2"/><rect class="leaf" x="116" y="170" width="20" height="2"/><rect class="leaf" x="116" y="172" width="20" height="2"/><rect class="leaf" x="116" y="174" width="20" height="2"/><rect class="leaf" x="114" y="176" width="24" height="2"/><rect class="leaf" x="116" y="178" width="20" height="2"/><rect class="leaf" x="116" y="180" width="20" height="2"/><rect class="leaf" x="116" y="182" width="20" height="2"/><rect class="leaf" x="118" y="184" width="16" height="2"/><rect class="leaf" x="120" y="186" width="12" height="2"/><rect class="leaf" x="114" y="173" width="8" height="2"/><rect class="leaf" x="112" y="175" width="12" height="2"/><rect class="leaf" x="112" y="177" width="12" height="2"/><rect class="leaf" x="112" y="179" width="12" height="2"/><rect class="leaf" x="112" y="181" width="12" height="2"/><rect class="leaf" x="112" y="183" width="12" height="2"/><rect class="leaf" x="114" y="185" width="8" height="2"/><rect class="leaf-sh" x="132" y="175" width="4" height="2"/><rect class="leaf-sh" x="130" y="177" width="8" height="2"/><rect class="leaf-sh" x="128" y="179" width="12" height="2"/><rect class="leaf-sh" x="128" y="181" width="12" height="2"/><rect class="leaf-sh" x="128" y="183" width="12" height="2"/><rect class="leaf-sh" x="130" y="185" width="8" height="2"/><rect class="leaf-sh" x="132" y="187" width="4" height="2"/><rect class="leaf-lit" x="118" y="169" width="8" height="2"/><rect class="leaf-lit" x="118" y="171" width="8" height="2"/><rect class="leaf-lit" x="116" y="173" width="12" height="2"/><rect class="leaf-lit" x="118" y="175" width="8" height="2"/><rect class="leaf-lit" x="118" y="177" width="8" height="2"/><rect class="trunk" x="146" y="186" width="4" height="22"/><rect class="trunk-sh" x="148" y="186" width="2" height="22"/><rect class="leaf-sh" x="147" y="167" width="8" height="2"/><rect class="leaf-sh" x="143" y="169" width="16" height="2"/><rect class="leaf-sh" x="141" y="171" width="20" height="2"/><rect class="leaf-sh" x="139" y="173" width="24" height="2"/><rect class="leaf-sh" x="139" y="175" width="24" height="2"/><rect class="leaf-sh" x="139" y="177" width="24" height="2"/><rect class="leaf-sh" x="137" y="179" width="28" height="2"/><rect class="leaf-sh" x="139" y="181" width="24" height="2"/><rect class="leaf-sh" x="139" y="183" width="24" height="2"/><rect class="leaf-sh" x="139" y="185" width="24" height="2"/><rect class="leaf-sh" x="141" y="187" width="20" height="2"/><rect class="leaf-sh" x="143" y="189" width="16" height="2"/><rect class="leaf-sh" x="147" y="191" width="8" height="2"/><rect class="leaf" x="144" y="161" width="8" height="2"/><rect class="leaf" x="140" y="163" width="16" height="2"/><rect class="leaf" x="138" y="165" width="20" height="2"/><rect class="leaf" x="136" y="167" width="24" height="2"/><rect class="leaf" x="136" y="169" width="24" height="2"/><rect class="leaf" x="134" y="171" width="28" height="2"/><rect class="leaf" x="134" y="173" width="28" height="2"/><rect class="leaf" x="134" y="175" width="28" height="2"/><rect class="leaf" x="134" y="177" width="28" height="2"/><rect class="leaf" x="134" y="179" width="28" height="2"/><rect class="leaf" x="136" y="181" width="24" height="2"/><rect class="leaf" x="136" y="183" width="24" height="2"/><rect class="leaf" x="138" y="185" width="20" height="2"/><rect class="leaf" x="140" y="187" width="16" height="2"/><rect class="leaf" x="144" y="189" width="8" height="2"/><rect class="leaf" x="133" y="170" width="8" height="2"/><rect class="leaf" x="131" y="172" width="12" height="2"/><rect class="leaf" x="129" y="174" width="16" height="2"/><rect class="leaf" x="129" y="176" width="16" height="2"/><rect class="leaf" x="129" y="178" width="16" height="2"/><rect class="leaf" x="129" y="180" width="16" height="2"/><rect class="leaf" x="129" y="182" width="16" height="2"/><rect class="leaf" x="131" y="184" width="12" height="2"/><rect class="leaf" x="133" y="186" width="8" height="2"/><rect class="leaf-sh" x="155" y="172" width="8" height="2"/><rect class="leaf-sh" x="153" y="174" width="12" height="2"/><rect class="leaf-sh" x="151" y="176" width="16" height="2"/><rect class="leaf-sh" x="151" y="178" width="16" height="2"/><rect class="leaf-sh" x="151" y="180" width="16" height="2"/><rect class="leaf-sh" x="151" y="182" width="16" height="2"/><rect class="leaf-sh" x="151" y="184" width="16" height="2"/><rect class="leaf-sh" x="153" y="186" width="12" height="2"/><rect class="leaf-sh" x="155" y="188" width="8" height="2"/><rect class="leaf-lit" x="140" y="166" width="8" height="2"/><rect class="leaf-lit" x="138" y="168" width="12" height="2"/><rect class="leaf-lit" x="138" y="170" width="12" height="2"/><rect class="leaf-lit" x="136" y="172" width="16" height="2"/><rect class="leaf-lit" x="138" y="174" width="12" height="2"/><rect class="leaf-lit" x="138" y="176" width="12" height="2"/><rect class="leaf-lit" x="140" y="178" width="8" height="2"/></g><g class="bushes"><rect class="leaf-sh" x="6" y="204" width="8" height="2"/><rect class="leaf-sh" x="4" y="206" width="12" height="2"/><rect class="leaf-sh" x="2" y="208" width="16" height="2"/><rect class="leaf-sh" x="2" y="210" width="16" height="2"/><rect class="leaf-sh" x="2" y="212" width="16" height="2"/><rect class="leaf-sh" x="4" y="214" width="12" height="2"/><rect class="leaf-sh" x="6" y="216" width="8" height="2"/><rect class="leaf" x="4" y="203" width="8" height="2"/><rect class="leaf" x="0" y="205" width="16" height="2"/><rect class="leaf" x="0" y="207" width="16" height="2"/><rect class="leaf" x="-2" y="209" width="20" height="2"/><rect class="leaf" x="0" y="211" width="16" height="2"/><rect class="leaf" x="0" y="213" width="16" height="2"/><rect class="leaf" x="4" y="215" width="8" height="2"/><rect class="leaf-lit" x="3" y="205" width="4" height="2"/><rect class="leaf-lit" x="1" y="207" width="8" height="2"/><rect class="leaf-lit" x="3" y="209" width="4" height="2"/><rect class="leaf-sh" x="26" y="203" width="8" height="2"/><rect class="leaf-sh" x="24" y="205" width="12" height="2"/><rect class="leaf-sh" x="24" y="207" width="12" height="2"/><rect class="leaf-sh" x="24" y="209" width="12" height="2"/><rect class="leaf-sh" x="26" y="211" width="8" height="2"/><rect class="leaf" x="24" y="202" width="8" height="2"/><rect class="leaf" x="22" y="204" width="12" height="2"/><rect class="leaf" x="20" y="206" width="16" height="2"/><rect class="leaf" x="22" y="208" width="12" height="2"/><rect class="leaf" x="24" y="210" width="8" height="2"/><rect class="leaf-lit" x="23" y="202" width="4" height="2"/><rect class="leaf-lit" x="21" y="204" width="8" height="2"/><rect class="leaf-lit" x="23" y="206" width="4" height="2"/><rect class="leaf-sh" x="48" y="206" width="4" height="2"/><rect class="leaf-sh" x="46" y="208" width="8" height="2"/><rect class="leaf-sh" x="44" y="210" width="12" height="2"/><rect class="leaf-sh" x="46" y="212" width="8" height="2"/><rect class="leaf-sh" x="48" y="214" width="4" height="2"/><rect class="leaf" x="44" y="205" width="8" height="2"/><rect class="leaf" x="42" y="207" width="12" height="2"/><rect class="leaf" x="42" y="209" width="12" height="2"/><rect class="leaf" x="42" y="211" width="12" height="2"/><rect class="leaf" x="44" y="213" width="8" height="2"/><rect class="leaf-lit" x="43" y="207" width="4" height="2"/><rect class="leaf-sh" x="116" y="203" width="8" height="2"/><rect class="leaf-sh" x="114" y="205" width="12" height="2"/><rect class="leaf-sh" x="114" y="207" width="12" height="2"/><rect class="leaf-sh" x="114" y="209" width="12" height="2"/><rect class="leaf-sh" x="116" y="211" width="8" height="2"/><rect class="leaf" x="114" y="202" width="8" height="2"/><rect class="leaf" x="112" y="204" width="12" height="2"/><rect class="leaf" x="110" y="206" width="16" height="2"/><rect class="leaf" x="112" y="208" width="12" height="2"/><rect class="leaf" x="114" y="210" width="8" height="2"/><rect class="leaf-lit" x="113" y="202" width="4" height="2"/><rect class="leaf-lit" x="111" y="204" width="8" height="2"/><rect class="leaf-lit" x="113" y="206" width="4" height="2"/><rect class="leaf-sh" x="136" y="201" width="8" height="2"/><rect class="leaf-sh" x="134" y="203" width="12" height="2"/><rect class="leaf-sh" x="132" y="205" width="16" height="2"/><rect class="leaf-sh" x="134" y="207" width="12" height="2"/><rect class="leaf-sh" x="136" y="209" width="8" height="2"/><rect class="leaf" x="132" y="200" width="12" height="2"/><rect class="leaf" x="130" y="202" width="16" height="2"/><rect class="leaf" x="130" y="204" width="16" height="2"/><rect class="leaf" x="130" y="206" width="16" height="2"/><rect class="leaf" x="132" y="208" width="12" height="2"/><rect class="leaf-lit" x="133" y="200" width="4" height="2"/><rect class="leaf-lit" x="131" y="202" width="8" height="2"/><rect class="leaf-lit" x="133" y="204" width="4" height="2"/><rect class="leaf-sh" x="152" y="204" width="8" height="2"/><rect class="leaf-sh" x="150" y="206" width="12" height="2"/><rect class="leaf-sh" x="148" y="208" width="16" height="2"/><rect class="leaf-sh" x="148" y="210" width="16" height="2"/><rect class="leaf-sh" x="148" y="212" width="16" height="2"/><rect class="leaf-sh" x="150" y="214" width="12" height="2"/><rect class="leaf-sh" x="152" y="216" width="8" height="2"/><rect class="leaf" x="150" y="203" width="8" height="2"/><rect class="leaf" x="146" y="205" width="16" height="2"/><rect class="leaf" x="146" y="207" width="16" height="2"/><rect class="leaf" x="144" y="209" width="20" height="2"/><rect class="leaf" x="146" y="211" width="16" height="2"/><rect class="leaf" x="146" y="213" width="16" height="2"/><rect class="leaf" x="150" y="215" width="8" height="2"/><rect class="leaf-lit" x="149" y="205" width="4" height="2"/><rect class="leaf-lit" x="147" y="207" width="8" height="2"/><rect class="leaf-lit" x="149" y="209" width="4" height="2"/></g><g class="grass-band"><rect class="grass" x="0" y="204" width="2" height="10"/><rect class="grass" x="2" y="204" width="2" height="10"/><rect class="grass" x="4" y="204" width="2" height="10"/><rect class="grass" x="6" y="203" width="2" height="10"/><rect class="grass" x="8" y="203" width="2" height="10"/><rect class="grass" x="10" y="202" width="2" height="10"/><rect class="grass" x="12" y="202" width="2" height="10"/><rect class="grass" x="14" y="201" width="2" height="10"/><rect class="grass" x="16" y="201" width="2" height="10"/><rect class="grass" x="18" y="200" width="2" height="10"/><rect class="grass" x="20" y="200" width="2" height="10"/><rect class="grass" x="22" y="199" width="2" height="10"/><rect class="grass" x="24" y="199" width="2" height="10"/><rect class="grass" x="26" y="198" width="2" height="10"/><rect class="grass" x="28" y="198" width="2" height="10"/><rect class="grass" x="30" y="198" width="2" height="10"/><rect class="grass" x="32" y="198" width="2" height="10"/><rect class="grass" x="34" y="198" width="2" height="10"/><rect class="grass" x="36" y="198" width="2" height="10"/><rect class="grass" x="38" y="198" width="2" height="10"/><rect class="grass" x="40" y="199" width="2" height="10"/><rect class="grass" x="42" y="199" width="2" height="10"/><rect class="grass" x="44" y="199" width="2" height="10"/><rect class="grass" x="46" y="199" width="2" height="10"/><rect class="grass" x="48" y="200" width="2" height="10"/><rect class="grass" x="50" y="200" width="2" height="10"/><rect class="grass" x="52" y="200" width="2" height="10"/><rect class="grass" x="54" y="201" width="2" height="10"/><rect class="grass" x="56" y="201" width="2" height="10"/><rect class="grass" x="58" y="201" width="2" height="10"/><rect class="grass" x="60" y="201" width="2" height="10"/><rect class="grass" x="62" y="202" width="2" height="10"/><rect class="grass" x="64" y="202" width="2" height="10"/><rect class="grass" x="66" y="202" width="2" height="10"/><rect class="grass" x="68" y="202" width="2" height="10"/><rect class="grass" x="70" y="202" width="2" height="10"/><rect class="grass" x="72" y="202" width="2" height="10"/><rect class="grass" x="74" y="202" width="2" height="10"/><rect class="grass" x="76" y="201" width="2" height="10"/><rect class="grass" x="78" y="201" width="2" height="10"/><rect class="grass" x="80" y="200" width="2" height="10"/><rect class="grass" x="82" y="200" width="2" height="10"/><rect class="grass" x="84" y="199" width="2" height="10"/><rect class="grass" x="86" y="199" width="2" height="10"/><rect class="grass" x="88" y="198" width="2" height="10"/><rect class="grass" x="90" y="198" width="2" height="10"/><rect class="grass" x="92" y="197" width="2" height="10"/><rect class="grass" x="94" y="197" width="2" height="10"/><rect class="grass" x="96" y="196" width="2" height="10"/><rect class="grass" x="98" y="196" width="2" height="10"/><rect class="grass" x="100" y="196" width="2" height="10"/><rect class="grass" x="102" y="196" width="2" height="10"/><rect class="grass" x="104" y="196" width="2" height="10"/><rect class="grass" x="106" y="196" width="2" height="10"/><rect class="grass" x="108" y="197" width="2" height="10"/><rect class="grass" x="110" y="197" width="2" height="10"/><rect class="grass" x="112" y="197" width="2" height="10"/><rect class="grass" x="114" y="198" width="2" height="10"/><rect class="grass" x="116" y="198" width="2" height="10"/><rect class="grass" x="118" y="199" width="2" height="10"/><rect class="grass" x="120" y="199" width="2" height="10"/><rect class="grass" x="122" y="199" width="2" height="10"/><rect class="grass" x="124" y="200" width="2" height="10"/><rect class="grass" x="126" y="200" width="2" height="10"/><rect class="grass" x="128" y="200" width="2" height="10"/><rect class="grass" x="130" y="200" width="2" height="10"/><rect class="grass" x="132" y="200" width="2" height="10"/><rect class="grass" x="134" y="200" width="2" height="10"/><rect class="grass" x="136" y="200" width="2" height="10"/><rect class="grass" x="138" y="200" width="2" height="10"/><rect class="grass" x="140" y="199" width="2" height="10"/><rect class="grass" x="142" y="199" width="2" height="10"/><rect class="grass" x="144" y="199" width="2" height="10"/><rect class="grass" x="146" y="199" width="2" height="10"/><rect class="grass" x="148" y="199" width="2" height="10"/><rect class="grass" x="150" y="199" width="2" height="10"/><rect class="grass" x="152" y="198" width="2" height="10"/><rect class="grass" x="154" y="198" width="2" height="10"/><rect class="grass" x="156" y="198" width="2" height="10"/><rect class="grass" x="158" y="198" width="2" height="10"/><rect class="grass2" x="0" y="202" width="2" height="4"/><rect class="grass" x="4" y="201" width="2" height="5"/><rect class="grass2" x="6" y="201" width="2" height="4"/><rect class="grass2" x="10" y="198" width="2" height="6"/><rect class="grass2" x="12" y="200" width="2" height="4"/><rect class="grass2" x="18" y="198" width="2" height="4"/><rect class="grass" x="18" y="197" width="2" height="5"/><rect class="grass2" x="20" y="196" width="2" height="6"/><rect class="grass2" x="24" y="197" width="2" height="4"/><rect class="grass2" x="30" y="196" width="2" height="4"/><rect class="grass" x="32" y="195" width="2" height="5"/><rect class="grass2" x="36" y="196" width="2" height="4"/><rect class="grass2" x="40" y="195" width="2" height="6"/><rect class="grass2" x="42" y="197" width="2" height="4"/><rect class="grass" x="46" y="196" width="2" height="5"/><rect class="grass2" x="48" y="198" width="2" height="4"/><rect class="grass2" x="50" y="196" width="2" height="6"/><rect class="grass2" x="54" y="199" width="2" height="4"/><rect class="grass2" x="60" y="199" width="2" height="4"/><rect class="grass" x="60" y="198" width="2" height="5"/><rect class="grass2" x="66" y="200" width="2" height="4"/><rect class="grass2" x="70" y="198" width="2" height="6"/><rect class="grass2" x="72" y="200" width="2" height="4"/><rect class="grass" x="74" y="199" width="2" height="5"/><rect class="grass2" x="78" y="199" width="2" height="4"/><rect class="grass2" x="80" y="196" width="2" height="6"/><rect class="grass2" x="84" y="197" width="2" height="4"/><rect class="grass" x="88" y="195" width="2" height="5"/><rect class="grass2" x="90" y="196" width="2" height="4"/><rect class="grass2" x="96" y="194" width="2" height="4"/><rect class="grass2" x="100" y="192" width="2" height="6"/><rect class="grass2" x="102" y="194" width="2" height="4"/><rect class="grass" x="102" y="193" width="2" height="5"/><rect class="grass2" x="108" y="195" width="2" height="4"/><rect class="grass2" x="110" y="193" width="2" height="6"/><rect class="grass2" x="114" y="196" width="2" height="4"/><rect class="grass" x="116" y="195" width="2" height="5"/><rect class="grass2" x="120" y="197" width="2" height="4"/><rect class="grass2" x="126" y="198" width="2" height="4"/><rect class="grass2" x="130" y="196" width="2" height="6"/><rect class="grass" x="130" y="197" width="2" height="5"/><rect class="grass2" x="132" y="198" width="2" height="4"/><rect class="grass2" x="138" y="198" width="2" height="4"/><rect class="grass2" x="140" y="195" width="2" height="6"/><rect class="grass2" x="144" y="197" width="2" height="4"/><rect class="grass" x="144" y="196" width="2" height="5"/><rect class="grass2" x="150" y="197" width="2" height="4"/><rect class="grass2" x="156" y="196" width="2" height="4"/><rect class="grass" x="158" y="195" width="2" height="5"/></g><g class="flowers"><rect class="flower-y" x="12" y="206" width="2" height="2"/><rect class="flower-y" x="10" y="206" width="2" height="2" opacity=".85"/><rect class="flower-y" x="14" y="206" width="2" height="2" opacity=".85"/><rect class="flower-c" x="12" y="204" width="2" height="2"/><rect class="flower-p" x="22" y="202" width="2" height="2"/><rect class="flower-p" x="20" y="202" width="2" height="2" opacity=".85"/><rect class="flower-p" x="24" y="202" width="2" height="2" opacity=".85"/><rect class="flower-c" x="22" y="200" width="2" height="2"/><rect class="flower-y" x="40" y="204" width="2" height="2"/><rect class="flower-y" x="38" y="204" width="2" height="2" opacity=".85"/><rect class="flower-y" x="42" y="204" width="2" height="2" opacity=".85"/><rect class="flower-c" x="40" y="202" width="2" height="2"/><rect class="flower-p" x="56" y="208" width="2" height="2"/><rect class="flower-p" x="54" y="208" width="2" height="2" opacity=".85"/><rect class="flower-p" x="58" y="208" width="2" height="2" opacity=".85"/><rect class="flower-c" x="56" y="206" width="2" height="2"/><rect class="flower-y" x="74" y="206" width="2" height="2"/><rect class="flower-y" x="72" y="206" width="2" height="2" opacity=".85"/><rect class="flower-y" x="76" y="206" width="2" height="2" opacity=".85"/><rect class="flower-c" x="74" y="204" width="2" height="2"/><rect class="flower-p" x="92" y="200" width="2" height="2"/><rect class="flower-p" x="90" y="200" width="2" height="2" opacity=".85"/><rect class="flower-p" x="94" y="200" width="2" height="2" opacity=".85"/><rect class="flower-c" x="92" y="198" width="2" height="2"/><rect class="flower-y" x="110" y="204" width="2" height="2"/><rect class="flower-y" x="108" y="204" width="2" height="2" opacity=".85"/><rect class="flower-y" x="112" y="204" width="2" height="2" opacity=".85"/><rect class="flower-c" x="110" y="202" width="2" height="2"/><rect class="flower-p" x="128" y="202" width="2" height="2"/><rect class="flower-p" x="126" y="202" width="2" height="2" opacity=".85"/><rect class="flower-p" x="130" y="202" width="2" height="2" opacity=".85"/><rect class="flower-c" x="128" y="200" width="2" height="2"/><rect class="flower-y" x="146" y="206" width="2" height="2"/><rect class="flower-y" x="144" y="206" width="2" height="2" opacity=".85"/><rect class="flower-y" x="148" y="206" width="2" height="2" opacity=".85"/><rect class="flower-c" x="146" y="204" width="2" height="2"/><rect class="flower-p" x="34" y="214" width="2" height="2"/><rect class="flower-p" x="32" y="214" width="2" height="2" opacity=".85"/><rect class="flower-p" x="36" y="214" width="2" height="2" opacity=".85"/><rect class="flower-c" x="34" y="212" width="2" height="2"/><rect class="flower-y" x="84" y="212" width="2" height="2"/><rect class="flower-y" x="82" y="212" width="2" height="2" opacity=".85"/><rect class="flower-y" x="86" y="212" width="2" height="2" opacity=".85"/><rect class="flower-c" x="84" y="210" width="2" height="2"/><rect class="flower-p" x="152" y="210" width="2" height="2"/><rect class="flower-p" x="150" y="210" width="2" height="2" opacity=".85"/><rect class="flower-p" x="154" y="210" width="2" height="2" opacity=".85"/><rect class="flower-c" x="152" y="208" width="2" height="2"/><rect class="flower-y" x="64" y="216" width="2" height="2"/><rect class="flower-y" x="62" y="216" width="2" height="2" opacity=".85"/><rect class="flower-y" x="66" y="216" width="2" height="2" opacity=".85"/><rect class="flower-c" x="64" y="214" width="2" height="2"/><rect class="flower-p" x="100" y="214" width="2" height="2"/><rect class="flower-p" x="98" y="214" width="2" height="2" opacity=".85"/><rect class="flower-p" x="102" y="214" width="2" height="2" opacity=".85"/><rect class="flower-c" x="100" y="212" width="2" height="2"/></g><g class="soil-band"><rect class="soil" x="0" y="264" width="160" height="16"/><rect class="soil-top" x="0" y="262" width="160" height="4"/><rect class="pebble" x="18" y="270" width="6" height="4"/><rect class="pebble" x="70" y="272" width="8" height="3"/><rect class="pebble" x="120" y="269" width="5" height="4"/><rect class="pebble" x="148" y="272" width="6" height="3"/></g></svg>
     <div class="shafts"><i></i><i></i><i></i><i></i><i></i></div>
     <div id="flies"></div>
+    <div class="storm-veil" aria-hidden="true"></div>
+    <canvas id="weather" aria-hidden="true"></canvas>
+    <div id="lightningFlash" aria-hidden="true"></div>
     <div class="vignette"></div>
   </div>
   <div id="menu" class="screen">
@@ -1733,18 +2165,46 @@
       </div>
     </header>
     <div class="scores">
-      <div class="score"><span class="crown"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 12 L12 22 L4 12 Z" fill="currentColor" opacity=".9"/><path d="M12 2 L12 22 M4 12 L20 12" stroke="rgba(0,0,0,.35)" stroke-width="1"/></svg></span><span id="score">0</span></div>
+      <div class="score"><span class="crown"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 12 L12 22 L4 12 Z" fill="currentColor" opacity=".9"/><path d="M12 2 L12 22 M4 12 L20 12" stroke="rgba(0,0,0,.35)" stroke-width="1"/></svg></span><span id="score">0</span><span id="saveIcon" class="save-icon hidden" title="Salvado disponible" aria-label="Salvado disponible"><svg viewBox="0 0 11 13" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="1" width="5" height="1" fill="currentColor"/><rect x="2" y="2" width="7" height="1" fill="currentColor"/><rect x="1" y="3" width="9" height="5" fill="currentColor"/><rect x="2" y="8" width="7" height="1" fill="currentColor"/><rect x="3" y="9" width="5" height="1" fill="currentColor"/><rect x="4" y="10" width="3" height="1" fill="currentColor"/><rect x="5" y="11" width="1" height="1" fill="currentColor"/><rect x="3" y="2" width="5" height="1" fill="#fff6c0" opacity=".4"/><rect x="2" y="3" width="1" height="4" fill="#fff6c0" opacity=".4"/><rect x="5" y="4" width="1" height="3" fill="#fff6c0" opacity=".55"/><rect x="4" y="5" width="3" height="1" fill="#fff6c0" opacity=".55"/></svg></span></div>
+      <div id="stormBadge" class="storm-badge hidden" aria-live="polite"><span class="storm-mark" aria-hidden="true"></span><span id="stormLabel"></span></div>
       <div id="goalEl" class="goal hidden"></div>
       <div class="best" id="bestWrap">Mejor <span id="best">0</span></div>
     </div>
+    <div class="gate-track" id="gateTrack" hidden><div class="gate-track-fill" id="gateFill"></div><div id="gateMarks"></div></div>
     <div class="record-track" id="recordTrack" hidden><div class="record-track-fill" id="recordFill"></div></div>
     <div id="boardWrap">
       <div id="board" aria-label="Tablero"></div>
+      <div id="windMarks" class="hidden" aria-hidden="true"></div>
+      <div id="windCue" class="hidden" aria-live="polite"></div>
       <div id="fx"></div>
       <div id="toast"></div>
       <div id="banner"></div>
     </div>
     <div id="tray" aria-label="Piezas"></div>
+    <div id="tutoGirar" class="tuto-girar hidden" hidden>
+      <button type="button" class="tuto-cap" id="tutoCap">Toca para girar · Arrastra para colocar</button>
+      <div class="tuto-hand" aria-hidden="true">
+        <svg viewBox="0 0 17 22" shape-rendering="crispEdges">
+          <rect x="8" y="0" width="3" height="1" fill="#5A3828"/>
+          <rect x="7" y="1" width="5" height="6" fill="#5A3828"/>
+          <rect x="8" y="1" width="3" height="6" fill="#F0C8A0"/>
+          <rect x="9" y="1" width="1" height="1" fill="#F8E0C8"/>
+          <rect x="1" y="6" width="4" height="1" fill="#5A3828"/>
+          <rect x="0" y="7" width="6" height="4" fill="#5A3828"/>
+          <rect x="1" y="7" width="4" height="3" fill="#E8B080"/>
+          <rect x="6" y="6" width="9" height="8" fill="#5A3828"/>
+          <rect x="7" y="7" width="7" height="6" fill="#F0C8A0"/>
+          <rect x="8" y="7" width="3" height="2" fill="#F8E0C8"/>
+          <rect x="2" y="8" width="2" height="1" fill="#F0C8A0"/>
+          <rect x="4" y="13" width="9" height="3" fill="#5A3828"/>
+          <rect x="5" y="13" width="7" height="2" fill="#2A4A58"/>
+          <rect x="5" y="15" width="7" height="1" fill="#1A3340"/>
+          <rect x="5" y="16" width="7" height="5" fill="#5A3828"/>
+          <rect x="6" y="16" width="5" height="4" fill="#2A4A58"/>
+          <rect x="6" y="20" width="5" height="1" fill="#1A3340"/>
+        </svg>
+      </div>
+    </div>
   </div>
   <div id="dragLayer"></div>
   <div id="overlay" class="hidden" role="dialog" aria-modal="true"></div>
@@ -2374,6 +2834,21 @@
 <script>
 (function () {
   const L = FigurasLogic;
+  // Puertas de Infinito (la lógica sigue trayendo 900/1900/2900; aquí se mueven sin tocar FigurasLogic).
+  // 2 piedras a 3.000: a mitad de camino entre piedras y enredadera. Si no, al cruzar 1.500 saldrían 2 de golpe (el 1.500 viejo sigue hardcodeado dentro de la lógica).
+  const GATE = { stones: 1500, vines: 4000, wind: 8000, stones2: 3000 };
+  L.GATES.stones = GATE.stones;
+  L.GATES.vines = GATE.vines;
+  L.GATES.wind = GATE.wind;
+  L.stonesForScore = function (s) {
+    return s < GATE.stones ? 0 : s >= GATE.stones2 ? 2 : 1;
+  };
+  L.spawnForTrio = function (board, s, rng) {
+    const n = L.stonesForScore(s);
+    const stones = n ? L.addStones(board, n, rng) : [];
+    const vine = s >= GATE.vines ? L.addVine(board, rng) : null;
+    return { stones: stones, vine: vine };
+  };
   // Colores de presentación (la lógica conserva los suyos)
   const COLOR = { triangle: "#F5680A", circle: "#1674C2", star: "#ECB116", heart: "#EA301C" };
   const LEVELS_OPEN = false; // todos los niveles: próximamente
@@ -2389,6 +2864,8 @@
   const btnNew = document.getElementById("btnNew");
   const toastEl = document.getElementById("toast");
   const bannerEl = document.getElementById("banner");
+  const stormBadge = document.getElementById("stormBadge");
+  const stormLabel = document.getElementById("stormLabel");
 
   let board = L.makeBoard();
   let tray = [null, null, null];
@@ -2403,6 +2880,14 @@
   let windState = {};   // control de ráfagas (gustDue)
   let unlocked = {};    // avisos de desbloqueo ya mostrados en esta partida
   let gustCount = 0;
+  let pendingGust = null;
+  let lastStormKey = "none";
+  let vineOriginSeq = 1;
+  let saveUsed = false;
+  let tutoOpen = false;
+  let tutoPlaced = 0;
+  let tutoIndex = 0;
+  const TUTO_KEY = "figuras_tuto_girar";
 
   try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch (e) { best = 0; }
 
@@ -2496,6 +2981,7 @@
       bestWrap.classList.remove("hidden");
       btnNew.textContent = "Nueva partida";
     }
+    updateSaveIcon();
   }
   function updateMenuBest() {
     if (menuBestEl) menuBestEl.textContent = String(best);
@@ -2820,6 +3306,9 @@
     const frozen = progress != null;
     captures.forEach(function (mv) {
       const spec = vineReachSpecs(mv.from, mv.captured, wr);
+      const originVal = board[mv.from.r] && board[mv.from.r][mv.from.c];
+      const showPlant = !originVal || L.isVine(originVal);
+      if (showPlant) {
       const plant = document.createElement("div");
       plant.className = "vinefx-plant";
       plant.style.left = spec.a.x + "px";
@@ -2836,6 +3325,7 @@
         }
       }
       layer.appendChild(plant);
+      }
 
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("class", "vinefx-reach");
@@ -2959,7 +3449,8 @@
     const isStone = !!(v && v.symbol === L.STONE);
     const isVine = !!(v && v.symbol === L.VINE);
     const ghostSym = (!v && (kind === "match" || kind === "line") && hsym) ? hsym : "";
-    const content = vsym + "|" + (trapped ? 1 : 0) + "|" + (isStone ? "X" : "") + "|" + (isVine ? "V" : "") + "|" + ghostSym;
+    const ticks = (trapped && v.vineTicks != null) ? v.vineTicks : "";
+    const content = vsym + "|" + (trapped ? 1 : 0) + "|" + (isStone ? "X" : "") + "|" + (isVine ? "V" : "") + "|" + ghostSym + "|" + ticks;
     const will = (kind === "match" && hsym) ? (COLOR[hsym] || "#fff") : "";
     let cls = "cell";
     if (preview === "ok") cls += " preview-ok";
@@ -2991,8 +3482,14 @@
       el.innerHTML = svgVine(false);
     } else if (v) {
       el.innerHTML = svgSymbol(v.symbol, COLOR[v.symbol] || v.color);
-      if (trapped) el.innerHTML += svgVine(true);
+      if (trapped) {
+        el.innerHTML += svgVine(true);
+        el.innerHTML += vinePipsHtml(v);
+        if (v.vineTicks != null) el.setAttribute("data-vine-ticks", String(v.vineTicks));
+        else el.removeAttribute("data-vine-ticks");
+      }
     }
+    if (!trapped) el.removeAttribute("data-vine-ticks");
     if (ghostSym) el.innerHTML = svgSymbol(ghostSym, COLOR[ghostSym] || "#fff");
   }
 
@@ -3054,6 +3551,7 @@
   }
 
   function renderBoard(previewCells, previewOk, clearHint) {
+    syncVineMeta();
     const map = Object.create(null);
     if (previewCells) {
       for (let i = 0; i < previewCells.length; i++) {
@@ -3067,6 +3565,7 @@
         paintCell(r, c, map[k], clearHint && clearHint[k]);
       }
     }
+    renderWindWarning();
   }
 
 
@@ -3115,20 +3614,25 @@
       tray[index] = next;
       rotating = false;
       renderTray();
+      dismissTuto();
     }
     rotating = true;
     buzz(8);
     if (!mini) { commit(); return; }
     slot.classList.add("rotating");
-    void mini.offsetWidth;
-    mini.classList.add("turning");
     const done = function (e) {
       if (e && e.propertyName && e.propertyName !== "transform") return;
       mini.removeEventListener("transitionend", done);
       commit();
     };
     mini.addEventListener("transitionend", done);
-    setTimeout(done, 280);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (finished || !mini.isConnected) return;
+        mini.classList.add("turning");
+      });
+    });
+    setTimeout(done, 300);
   }
 
   function pieceBounds(piece) {
@@ -3174,7 +3678,93 @@
     return Math.max(16, Math.min(36, Math.floor(Math.min(w / b.cols, h / b.rows) - 2)));
   }
 
-  function renderTray() {
+  function needsRotateToFit(bd, piece) {
+    if (!piece) return false;
+    if (L.pieceFits(bd, piece)) return false;
+    return pieceFitsAnyRot(bd, piece);
+  }
+  function tutoSeen() {
+    try { return localStorage.getItem(TUTO_KEY) === "1"; } catch (e) { return false; }
+  }
+  function pickTutoSlot() {
+    for (let i = 0; i < 3; i++) if (tray[i] && needsRotateToFit(board, tray[i])) return i;
+    for (let i = 0; i < 3; i++) if (tray[i] && pieceChangesOnRotate(tray[i])) return i;
+    for (let i = 0; i < 3; i++) if (tray[i]) return i;
+    return 0;
+  }
+  function markTutoSlot() {
+    if (!trayEl) return;
+    const slots = trayEl.querySelectorAll(".slot");
+    for (let i = 0; i < slots.length; i++) slots[i].classList.toggle("tuto-target", tutoOpen && i === tutoIndex);
+    positionTuto();
+  }
+  function positionTuto() {
+    const layer = document.getElementById("tutoGirar");
+    if (!layer || layer.classList.contains("hidden") || !tutoOpen) return;
+    const app = document.getElementById("app");
+    const hand = layer.querySelector(".tuto-hand");
+    const cap = document.getElementById("tutoCap");
+    const slot = trayEl && trayEl.querySelector('.slot[data-i="' + tutoIndex + '"]');
+    if (!app || !hand || !slot) return;
+    const ar = app.getBoundingClientRect();
+    const sr = slot.getBoundingClientRect();
+    const tr = trayEl.getBoundingClientRect();
+    const hw = hand.offsetWidth || 54, hh = hand.offsetHeight || 68;
+    hand.style.left = (sr.left - ar.left + sr.width * 0.42) + "px";
+    hand.style.top = (sr.top - ar.top + sr.height * 0.42) + "px";
+    if (cap) {
+      cap.style.top = Math.max(8, tr.top - ar.top - 36) + "px";
+    }
+  }
+  function dismissTuto() {
+    if (!tutoOpen) return;
+    tutoOpen = false;
+    const appHide = document.getElementById("app");
+    if (appHide) appHide.classList.remove("tuto-open");
+    const layer = document.getElementById("tutoGirar");
+    if (layer) {
+      layer.classList.add("hidden");
+      layer.classList.remove("on");
+      layer.hidden = true;
+    }
+    if (trayEl) {
+      const slots = trayEl.querySelectorAll(".slot.tuto-target");
+      for (let i = 0; i < slots.length; i++) slots[i].classList.remove("tuto-target");
+    }
+    try { localStorage.setItem(TUTO_KEY, "1"); } catch (e) {}
+  }
+  function maybeShowTuto(force) {
+    if (mode !== "infinite") return false;
+    if (!force && tutoSeen()) return false;
+    const layer = document.getElementById("tutoGirar");
+    if (!layer) return false;
+    tutoIndex = pickTutoSlot();
+    if (!tray[tutoIndex]) return false;
+    tutoOpen = true;
+    tutoPlaced = 0;
+    const appShow = document.getElementById("app");
+    if (appShow) appShow.classList.add("tuto-open");
+    layer.hidden = false;
+    layer.classList.remove("hidden");
+    layer.classList.add("on");
+    if (vinePrefersReduced()) layer.classList.add("reduced");
+    else layer.classList.remove("reduced");
+    markTutoSlot();
+    requestAnimationFrame(function () { requestAnimationFrame(positionTuto); });
+    return true;
+  }
+  function hideTutoVisual() {
+    const layer = document.getElementById("tutoGirar");
+    if (!layer) return;
+    tutoOpen = false;
+    const appHide = document.getElementById("app");
+    if (appHide) appHide.classList.remove("tuto-open");
+    layer.classList.add("hidden");
+    layer.classList.remove("on");
+    layer.hidden = true;
+  }
+
+    function renderTray() {
     trayEl.innerHTML = "";
     for (let i = 0; i < 3; i++) {
       const slot = document.createElement("div");
@@ -3187,6 +3777,10 @@
         if (pieceChangesOnRotate(piece)) {
           const hint = document.createElement("span");
           hint.className = "rot-hint";
+          if (needsRotateToFit(board, piece)) {
+            hint.classList.add("needed");
+            slot.classList.add("rot-needed");
+          }
           hint.setAttribute("aria-hidden", "true");
           hint.innerHTML = ROT_HINT_SVG;
           slot.appendChild(hint);
@@ -3195,17 +3789,21 @@
       }
       trayEl.appendChild(slot);
     }
+    if (tutoOpen) markTutoSlot();
   }
 
   const UNLOCKS = [
-    { key: "stones", at: L.GATES.stones, text: "🪨 ¡Llegan las piedras!" },
-    { key: "vines", at: L.GATES.vines, text: "🌿 ¡Llegan las enredaderas!" },
-    { key: "wind", at: L.GATES.wind, text: "💨 ¡Llega el viento!" }
+    { key: "stones", at: GATE.stones, text: "🪨 ¡Llegan las piedras!" },
+    { key: "vines", at: GATE.vines, text: "🌿 ¡Llegan las enredaderas!" },
+    { key: "wind", at: GATE.wind, text: "💨 ¡Llega el viento!" }
   ];
   function checkUnlocks() {
     for (let i = 0; i < UNLOCKS.length; i++) {
       const u = UNLOCKS[i];
-      if (!unlocked[u.key] && score >= u.at) { unlocked[u.key] = true; }
+      if (!unlocked[u.key] && score >= u.at) {
+        unlocked[u.key] = true;
+        if (mode === "infinite") showBanner(u.text, u.key);
+      }
     }
   }
   // Cartel grande en el centro; si llegan varios, salen uno detrás de otro
@@ -3260,6 +3858,46 @@
     }
   }
 
+  function fmtGate(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+  function updateGateTrack() {
+    const track = document.getElementById("gateTrack");
+    const fill = document.getElementById("gateFill");
+    const marks = document.getElementById("gateMarks");
+    if (!track || !fill || !marks) return;
+    const show = mode === "infinite" && !over && !won;
+    track.hidden = !show;
+    if (!show) return;
+    const max = GATE.wind;
+    const pct = Math.max(0, Math.min(100, 100 * score / max));
+    fill.style.width = pct + "%";
+    const gates = [
+      { at: GATE.stones, key: "stones" },
+      { at: GATE.vines, key: "vines" },
+      { at: GATE.wind, key: "wind" }
+    ];
+    if (!marks._built) {
+      marks.innerHTML = "";
+      for (let i = 0; i < gates.length; i++) {
+        const g = gates[i];
+        const el = document.createElement("div");
+        el.className = "gate-mark" + (i === 0 ? " is-first" : i === gates.length - 1 ? " is-last" : "");
+        el.style.left = (100 * g.at / max) + "%";
+        el.dataset.key = g.key;
+        const lab = document.createElement("span");
+        lab.className = "gate-lab";
+        lab.textContent = fmtGate(g.at);
+        el.appendChild(lab);
+        marks.appendChild(el);
+      }
+      marks._built = true;
+    }
+    const els = marks.children;
+    for (let i = 0; i < els.length; i++) {
+      els[i].classList.toggle("open", score >= gates[i].at);
+    }
+  }
   function updateRecordBar() {
     const track = document.getElementById("recordTrack");
     const fill = document.getElementById("recordFill");
@@ -3291,13 +3929,16 @@
       }
     }
     updateRecordBar();
+    updateGateTrack();
     updateHud();
+    updateStorm();
   }
 
   function renderScores() {
     showScore(score, true);
     bestEl.textContent = String(best);
     updateRecordBar();
+    updateGateTrack();
     updateHud();
   }
 
@@ -3728,6 +4369,11 @@
     bestAtStart = best;
     recordJustBeaten = false;
     gustCount = 0;
+    pendingGust = null;
+    lastStormKey = "none";
+    vineOriginSeq = 1;
+    saveUsed = false;
+    updateSaveIcon();
     levelStats = { moves: 0, groups: 0, lines: 0, stones: 0, combos: 0 };
     bannerQueue.length = 0;
     drag = null;
@@ -3736,25 +4382,923 @@
     overlayEl.innerHTML = "";
     fxEl.querySelectorAll(".flyer,.shard,.chunk,.sweep,.pts,.combo").forEach(function (n) { n.remove(); });
     renderScores();
+    updateStorm();
     renderBoard();
     renderTray();
+    tutoPlaced = 0;
+    maybeShowTuto();
   }
 
-  // Tanda nueva: piedras (≥900), enredadera (≥1900) y, a veces, ráfaga de viento (≥2900)
-  async function maybeRefill() {
+  // Tanda nueva: piedras (≥1.500), enredadera (≥4.000) y, a veces, ráfaga de viento (≥8.000)
+
+  // ---- v30: ciclo calma / tormenta (solo Infinito, a partir de 8.000). La lógica no se toca. ----
+  const STORM_START = GATE.wind;
+  const STORM_LEN = 2700;
+  const CALM_LEN = 1500;
+  const CYCLE_LEN = STORM_LEN + CALM_LEN;
+  const STORM_CAP = 6;
+  const STORM_WAVES = {
+    1: [
+      { minStones: 3, extraVineSteps: 0, maxVines: 1, large: 1, largeChance: 0.5, secondLarge: 0, thirdLarge: 0, allow9: 0 },
+      { minStones: 3, extraVineSteps: 1, maxVines: 1, large: 1, largeChance: 1, secondLarge: 0, thirdLarge: 0, allow9: 0 },
+      { minStones: 4, extraVineSteps: 1, maxVines: 1, large: 1, largeChance: 1, secondLarge: 0.3, thirdLarge: 0, allow9: 0 }
+    ],
+    2: [
+      { minStones: 4, extraVineSteps: 1, maxVines: 2, large: 1, largeChance: 1, secondLarge: 0.5, thirdLarge: 0, allow9: 0.08 },
+      { minStones: 5, extraVineSteps: 1, maxVines: 2, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0, allow9: 0.12 },
+      { minStones: 5, extraVineSteps: 1, maxVines: 2, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0, allow9: 0.15 }
+    ],
+    3: [
+      { minStones: 5, extraVineSteps: 1, maxVines: 2, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0, allow9: 0.15 },
+      { minStones: 6, extraVineSteps: 2, maxVines: 2, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.2, allow9: 0.18 },
+      { minStones: 6, extraVineSteps: 2, maxVines: 2, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.3, allow9: 0.2 }
+    ],
+    4: [
+      { minStones: 6, extraVineSteps: 2, maxVines: 2, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.25, allow9: 0.2 },
+      { minStones: 7, extraVineSteps: 2, maxVines: 2, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.35, allow9: 0.22 },
+      { minStones: 7, extraVineSteps: 2, maxVines: 2, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.4, allow9: 0.25 }
+    ],
+    5: [
+      { minStones: 7, extraVineSteps: 2, maxVines: 3, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.35, allow9: 0.25 },
+      { minStones: 7, extraVineSteps: 2, maxVines: 3, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.45, allow9: 0.28 },
+      { minStones: 8, extraVineSteps: 2, maxVines: 3, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.5, allow9: 0.3 }
+    ],
+    6: [
+      { minStones: 8, extraVineSteps: 2, maxVines: 3, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.5, allow9: 0.3 },
+      { minStones: 8, extraVineSteps: 2, maxVines: 3, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.5, allow9: 0.3 },
+      { minStones: 8, extraVineSteps: 2, maxVines: 3, large: 2, largeChance: 1, secondLarge: 1, thirdLarge: 0.5, allow9: 0.3 }
+    ]
+  };
+  function stormState(s) {
+    if (mode !== "infinite" || s < STORM_START) {
+      return { phase: "none", cycle: 0, wave: 0, progress: 0 };
+    }
+    const off = s - STORM_START;
+    const cycle = Math.floor(off / CYCLE_LEN) + 1;
+    const pos = off % CYCLE_LEN;
+    if (pos < STORM_LEN) {
+      const progress = pos / STORM_LEN;
+      const wave = progress < 1 / 3 ? 0 : progress < 2 / 3 ? 1 : 2;
+      return { phase: "storm", cycle: cycle, wave: wave, progress: progress };
+    }
+    return { phase: "calm", cycle: cycle, wave: 0, progress: (pos - STORM_LEN) / CALM_LEN };
+  }
+  function calmParams(cycle) {
+    const c = Math.min(cycle, STORM_CAP);
+    if (c <= 1) return { minStones: 0, extraVineSteps: 0, maxVines: 0, large: 0, largeChance: 0, secondLarge: 0, thirdLarge: 0, allow9: 0 };
+    return {
+      minStones: c >= 4 ? 3 : 2,
+      extraVineSteps: 0,
+      maxVines: 0,
+      large: c >= 3 ? 1 : 0,
+      largeChance: c >= 5 ? 0.4 : (c >= 3 ? 0.25 : 0),
+      secondLarge: 0,
+      thirdLarge: 0,
+      allow9: 0
+    };
+  }
+  function stormParams(s) {
+    const st = stormState(s);
+    if (st.phase === "none") return null;
+    if (st.phase === "calm") return calmParams(st.cycle);
+    const key = Math.min(st.cycle, STORM_CAP);
+    return STORM_WAVES[key][st.wave];
+  }
+  function stormNameFromState(st) {
+    if (!st || st.phase === "none") return "";
+    if (st.phase === "calm") return "Calma";
+    return "Tormenta " + st.cycle;
+  }
+  function stormKey(st) {
+    if (!st || st.phase === "none") return "none";
+    return st.phase + "-" + st.cycle;
+  }
+  function updateStorm() {
+    if (!stormBadge || !stormLabel) return;
+    const st = stormState(score);
+    const key = stormKey(st);
+    const prev = lastStormKey;
+    lastStormKey = key;
+    const atmos = document.getElementById("atmos");
+    const name = stormNameFromState(st);
+    if (st.phase === "none") {
+      stormLabel.textContent = "";
+      stormBadge.classList.add("hidden");
+      stormBadge.classList.remove("cap", "rise", "calm");
+      if (atmos) atmos.classList.remove("storm");
+      setWeather(false, 0);
+    } else {
+      stormLabel.textContent = name;
+      stormBadge.classList.remove("hidden");
+      stormBadge.classList.toggle("calm", st.phase === "calm");
+      stormBadge.classList.toggle("cap", st.phase === "storm" && st.cycle >= STORM_CAP);
+      if (atmos) {
+        atmos.classList.toggle("storm", st.phase === "storm");
+        const veilA = (0.2 + 0.03 * Math.min(st.cycle, STORM_CAP)).toFixed(2);
+        atmos.style.setProperty("--storm-veil-a", veilA);
+      }
+      setWeather(st.phase === "storm", st.cycle);
+      if (key !== prev) {
+        stormBadge.classList.remove("rise");
+        void stormBadge.offsetWidth;
+        stormBadge.classList.add("rise");
+        if (st.phase === "storm" && (prev === "none" || prev.indexOf("calm") === 0 || (prev.indexOf("storm-") === 0 && prev !== key))) {
+          showBanner("¡Llega la tormenta " + st.cycle + "!", "storm");
+          try { beep("wind"); } catch (e) {}
+        } else if (st.phase === "calm" && prev.indexOf("storm-") === 0) {
+          showBanner("La tormenta pasa… calma", "calm");
+        }
+      }
+    }
+  }
+
+  const weather = { on: false, cycle: 1, drops: [], bolts: [], clouds: [], raf: 0, last: 0, nextFlash: 0, holdUntil: 0 };
+  function reducedMotion() {
+    try { return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; }
+  }
+  function weatherCanvas() { return document.getElementById("weather"); }
+  function sizeWeather() {
+    const cv = weatherCanvas();
+    if (!cv) return;
+    const scale = 3;
+    const w = Math.max(1, Math.ceil(window.innerWidth / scale));
+    const h = Math.max(1, Math.ceil(window.innerHeight / scale));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    weather.scale = scale; weather.w = w; weather.h = h;
+  }
+  function seedDrops(n) {
+    sizeWeather();
+    const w = weather.w, h = weather.h;
+    weather.drops = [];
+    for (let i = 0; i < n; i++) {
+      weather.drops.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        len: 2 + Math.floor(Math.random() * 4),
+        vy: 0.7 + Math.random() * 0.7,
+        vx: 0.15 + Math.random() * 0.2,
+        a: 0.35 + Math.random() * 0.45
+      });
+    }
+  }
+  function weatherDropCount(cycle) {
+    const c = Math.min(Math.max(cycle, 1), STORM_CAP);
+    return reducedMotion() ? 28 + c * 6 : 48 + c * 16;
+  }
+  function cloudRowCount(cycle) {
+    const c = Math.min(Math.max(cycle, 1), STORM_CAP);
+    // more banks in later storms: 4 → 9
+    return reducedMotion() ? 3 + Math.floor(c / 2) : 3 + c;
+  }
+  function buildCloudRows(bw, bh, lump) {
+    const rows = [];
+    const n = Math.max(5, Math.floor(bh / 2));
+    for (let r = 0; r < n; r++) {
+      const t = r / (n - 1);
+      const mid = Math.sin(Math.PI * t);
+      const hump = 0.55 + 0.45 * mid;
+      const extra = lump === 2 ? 0.18 * Math.sin(Math.PI * t * 2) : 0;
+      const width = Math.max(8, Math.floor(bw * (hump + extra)));
+      const xoff = Math.floor((bw - width) / 2 + Math.sin(r * 1.3 + lump) * 2);
+      rows.push({ x: xoff, y: r * 2, w: width, h: 2 });
+    }
+    return rows;
+  }
+  function cloudPalette(cycle, layer) {
+    const c = Math.min(Math.max(cycle, 1), STORM_CAP);
+    // dusk mauve gone dark; later cycles sink toward ink
+    const sink = (c - 1) * 5;
+    const base = [
+      { fill: [62 - sink, 48 - sink, 96 - sink], sh: [46 - sink, 34 - sink, 74 - sink], hi: [92 - sink, 74 - sink, 120 - sink] },
+      { fill: [42 - sink, 28 - sink, 68 - sink], sh: [28 - sink, 18 - sink, 48 - sink], hi: [70 - sink, 52 - sink, 96 - sink] },
+      { fill: [24 - sink, 14 - sink, 42 - sink], sh: [14 - sink, 8 - sink, 28 - sink], hi: [52 - sink, 36 - sink, 72 - sink] }
+    ][layer];
+    function clamp(n) { return Math.max(6, Math.min(140, n)); }
+    return {
+      fill: "rgb(" + clamp(base.fill[0]) + "," + clamp(base.fill[1]) + "," + clamp(base.fill[2]) + ")",
+      sh: "rgb(" + clamp(base.sh[0]) + "," + clamp(base.sh[1]) + "," + clamp(base.sh[2]) + ")",
+      hi: "rgb(" + clamp(base.hi[0]) + "," + clamp(base.hi[1]) + "," + clamp(base.hi[2]) + ")"
+    };
+  }
+  function seedClouds(cycle, rollIn) {
+    sizeWeather();
+    const w = weather.w, h = weather.h;
+    const n = cloudRowCount(cycle);
+    const quiet = reducedMotion();
+    const list = [];
+    for (let i = 0; i < n; i++) {
+      const layer = i % 3; // 0 far, 1 mid, 2 near
+      const scale = layer === 0 ? 0.7 : layer === 1 ? 1 : 1.25;
+      const bw = Math.floor((28 + (i % 4) * 8 + layer * 6) * scale);
+      const bh = Math.floor((10 + (i % 3) * 3 + layer * 2) * scale);
+      const slot = (i + 0.6) / n;
+      const homeX = Math.floor(w * slot - bw / 2 + (i % 2 ? 3 : -3));
+      const y = Math.floor(h * (0.015 + layer * 0.025 + (i % 2) * 0.015));
+      const fromLeft = i % 2 === 0;
+      const startX = rollIn && !quiet ? (fromLeft ? -bw - 8 : w + 8) : homeX;
+      const cruise = quiet ? 0 : (layer === 0 ? 0.03 : layer === 1 ? 0.05 : 0.07) * (fromLeft ? 1 : -1);
+      list.push({
+        x: startX,
+        y: y,
+        homeX: homeX,
+        w: bw,
+        h: bh,
+        layer: layer,
+        rows: buildCloudRows(bw, bh, (i % 3) + 1),
+        colors: cloudPalette(cycle, layer),
+        alpha: rollIn ? 0 : 1,
+        target: 1,
+        vx: rollIn && !quiet ? (fromLeft ? 1.1 : -1.1) : cruise,
+        cruise: cruise,
+        fromLeft: fromLeft
+      });
+    }
+    // far first, then mid, then near (draw order)
+    list.sort(function (a, b) { return a.layer - b.layer; });
+    weather.clouds = list;
+  }
+  function tickClouds() {
+    const w = weather.w;
+    const quiet = reducedMotion();
+    const clouds = weather.clouds;
+    for (let i = 0; i < clouds.length; i++) {
+      const c = clouds[i];
+      c.alpha += (c.target - c.alpha) * (quiet ? 0.12 : 0.06);
+      if (c.target <= 0 && c.alpha < 0.03) { c.alpha = 0; continue; }
+      if (c.target > 0 && !quiet) {
+        const arriving = c.fromLeft ? c.x < c.homeX : c.x > c.homeX;
+        if (arriving) c.x += c.vx;
+        else {
+          c.x += c.cruise;
+          if (c.x < -c.w - 4) c.x = w + 2;
+          if (c.x > w + 4) c.x = -c.w - 2;
+        }
+      }
+    }
+    if (weather.clouds.every(function (c) { return c.target <= 0 && c.alpha <= 0; })) {
+      weather.clouds = [];
+    }
+  }
+  function drawClouds(ctx) {
+    const clouds = weather.clouds;
+    for (let i = 0; i < clouds.length; i++) {
+      const c = clouds[i];
+      if (c.alpha <= 0.02) continue;
+      ctx.globalAlpha = Math.min(1, c.alpha);
+      const ox = Math.round(c.x), oy = Math.round(c.y);
+      // shadow band slightly below
+      ctx.fillStyle = c.colors.sh;
+      for (let r = 0; r < c.rows.length; r++) {
+        const row = c.rows[r];
+        ctx.fillRect(ox + row.x, oy + row.y + 1, row.w, row.h);
+      }
+      ctx.fillStyle = c.colors.fill;
+      for (let r = 0; r < c.rows.length; r++) {
+        const row = c.rows[r];
+        ctx.fillRect(ox + row.x, oy + row.y, row.w, row.h);
+      }
+      // lighter lip on the top two rows
+      ctx.fillStyle = c.colors.hi;
+      for (let r = 0; r < Math.min(2, c.rows.length); r++) {
+        const row = c.rows[r];
+        ctx.fillRect(ox + row.x + 2, oy + row.y, Math.max(2, row.w - 4), row.h);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function pickBoltOrigin() {
+    const w = weather.w, h = weather.h;
+    const ready = weather.clouds.filter(function (c) { return c.alpha > 0.45; });
+    const side = ready.filter(function (c) {
+      const mid = c.x + c.w / 2;
+      return mid < w * 0.34 || mid > w * 0.66;
+    });
+    const pool = side.length ? side : ready;
+    if (pool.length) {
+      const c = pool[Math.floor(Math.random() * pool.length)];
+      return {
+        x: Math.floor(c.x + c.w * (0.28 + Math.random() * 0.44)),
+        y: Math.floor(c.y + c.h - 1)
+      };
+    }
+    return { x: Math.floor(w * (0.12 + Math.random() * 0.28)), y: Math.floor(h * 0.1) };
+  }
+  function makeBolt() {
+    const h = weather.h;
+    const origin = pickBoltOrigin();
+    const segs = [];
+    let x = origin.x, y = origin.y;
+    const skyFloor = Math.floor(h * 0.36);
+    const targetY = Math.min(skyFloor, y + 40 + Math.floor(Math.random() * 28));
+    while (y < targetY) {
+      const nx = x + Math.floor(Math.random() * 7) - 3;
+      const ny = y + 2 + Math.floor(Math.random() * 4);
+      segs.push({ x1: x, y1: y, x2: nx, y2: ny });
+      if (Math.random() < 0.18 && segs.length > 2) {
+        let bx = nx, by = ny;
+        const bEnd = by + 6 + Math.floor(Math.random() * 10);
+        while (by < bEnd) {
+          const bnx = bx + Math.floor(Math.random() * 7) - 3;
+          const bny = by + 2 + Math.floor(Math.random() * 3);
+          segs.push({ x1: bx, y1: by, x2: bnx, y2: bny, branch: 1 });
+          bx = bnx; by = bny;
+        }
+      }
+      x = nx; y = ny;
+    }
+    return { segs: segs, life: 1, born: performance.now() };
+  }
+  function drawBolts(ctx) {
+    for (let i = 0; i < weather.bolts.length; i++) {
+      const b = weather.bolts[i];
+      const a = Math.max(0, b.life);
+      // soft gold glow
+      ctx.fillStyle = "rgba(224, 160, 40," + (0.38 * a) + ")";
+      for (let k = 0; k < b.segs.length; k++) {
+        const s = b.segs[k];
+        const x = Math.min(s.x1, s.x2) - 2;
+        const y = Math.min(s.y1, s.y2);
+        ctx.fillRect(x, y, Math.abs(s.x2 - s.x1) + 5, Math.abs(s.y2 - s.y1) + 3);
+      }
+      // bright yellow body
+      ctx.fillStyle = "rgba(255, 210, 48," + (0.85 * a) + ")";
+      for (let k = 0; k < b.segs.length; k++) {
+        const s = b.segs[k];
+        ctx.fillRect(Math.min(s.x1, s.x2) - 1, Math.min(s.y1, s.y2), Math.abs(s.x2 - s.x1) + 3, Math.abs(s.y2 - s.y1) + 2);
+      }
+      // hot core
+      ctx.fillStyle = "rgba(255, 244, 140," + (0.98 * a) + ")";
+      for (let k = 0; k < b.segs.length; k++) {
+        const s = b.segs[k];
+        ctx.fillRect(s.x1, s.y1, 1, Math.max(1, s.y2 - s.y1));
+        ctx.fillRect(Math.min(s.x1, s.x2), s.y2, Math.abs(s.x2 - s.x1) + 1, 1);
+      }
+    }
+  }
+  function flashLightning(opts) {
+    opts = opts || {};
+    const flash = document.getElementById("lightningFlash");
+    const quiet = reducedMotion();
+    sizeWeather();
+    weather.bolts = [makeBolt()];
+    if (opts.hold) {
+      weather.holdUntil = performance.now() + opts.hold;
+      weather.bolts[0].life = 1;
+      if (flash) { flash.className = quiet ? "" : "hold"; }
+    } else if (flash && !quiet) {
+      flash.className = "";
+      void flash.offsetWidth;
+      flash.className = "boom";
+    } else if (flash && quiet) {
+      flash.className = "";
+      flash.style.opacity = "0.1";
+      setTimeout(function () { flash.style.opacity = ""; }, 200);
+    }
+    scheduleNextFlash();
+  }
+  function scheduleNextFlash() {
+    const c = Math.min(Math.max(weather.cycle, 1), STORM_CAP);
+    const quiet = reducedMotion();
+    const min = quiet ? 9000 : Math.max(2400, 7200 - c * 700);
+    const span = quiet ? 8000 : Math.max(1800, 5000 - c * 400);
+    weather.nextFlash = performance.now() + min + Math.random() * span;
+  }
+  function weatherTick(t) {
+    weather.raf = 0;
+    const cv = weatherCanvas();
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    sizeWeather();
+    const w = weather.w, h = weather.h;
+    ctx.clearRect(0, 0, w, h);
+    const running = weather.on || weather.holdUntil > t || weather.clouds.length;
+    if (!running && !weather.drops.length && !weather.bolts.length) return;
+    tickClouds();
+    drawClouds(ctx);
+    const c = Math.min(Math.max(weather.cycle, 1), STORM_CAP);
+    const speed = (reducedMotion() ? 0.55 : 0.85) + c * 0.12;
+    const drops = weather.drops;
+    const colA = "rgba(186, 204, 230,";
+    const colB = "rgba(224, 232, 255,";
+    for (let i = 0; i < drops.length; i++) {
+      const d = drops[i];
+      if (weather.on) {
+        d.y += d.vy * speed;
+        d.x += d.vx * speed;
+        if (d.y > h + 4) { d.y = -d.len; d.x = Math.random() * w; }
+        if (d.x > w + 2) d.x -= w + 4;
+      }
+      ctx.fillStyle = (i % 3 ? colA : colB) + d.a + ")";
+      ctx.fillRect(d.x | 0, d.y | 0, 1, d.len);
+    }
+    if (weather.on && t > weather.nextFlash && !reducedMotion() && t > weather.holdUntil) {
+      flashLightning();
+    }
+    if (weather.holdUntil && t > weather.holdUntil) {
+      weather.holdUntil = 0;
+      const flash = document.getElementById("lightningFlash");
+      if (flash) flash.className = "";
+    }
+    for (let i = weather.bolts.length - 1; i >= 0; i--) {
+      if (t < weather.holdUntil) weather.bolts[i].life = 1;
+      else weather.bolts[i].life -= reducedMotion() ? 0.08 : 0.045;
+      if (weather.bolts[i].life <= 0) weather.bolts.splice(i, 1);
+    }
+    if (weather.bolts.length) drawBolts(ctx);
+    if (weather.on || weather.bolts.length || weather.clouds.length || (document.getElementById("atmos") && document.getElementById("atmos").classList.contains("storm"))) {
+      weather.raf = requestAnimationFrame(weatherTick);
+    }
+  }
+  function setWeather(on, cycle) {
+    weather.cycle = cycle || 1;
+    const want = !!on;
+    if (want && !weather.on) {
+      weather.on = true;
+      seedDrops(weatherDropCount(weather.cycle));
+      seedClouds(weather.cycle, true);
+      scheduleNextFlash();
+      if (!weather.raf) weather.raf = requestAnimationFrame(weatherTick);
+    } else if (want) {
+      weather.on = true;
+      const need = weatherDropCount(weather.cycle);
+      if (Math.abs(need - weather.drops.length) > 8) seedDrops(need);
+      if (!weather.clouds.length) seedClouds(weather.cycle, true);
+      if (!weather.raf) weather.raf = requestAnimationFrame(weatherTick);
+    } else {
+      weather.on = false;
+      for (let i = 0; i < weather.clouds.length; i++) {
+        weather.clouds[i].target = 0;
+        weather.clouds[i].vx = weather.clouds[i].fromLeft ? -0.7 : 0.7;
+      }
+      const flash = document.getElementById("lightningFlash");
+      if (flash && !weather.holdUntil) flash.className = "";
+      if (!weather.raf) weather.raf = requestAnimationFrame(weatherTick);
+      setTimeout(function () {
+        if (!weather.on) {
+          weather.drops = [];
+          if (!weather.holdUntil) weather.bolts = [];
+        }
+      }, 1200);
+    }
+  }
+  function forceLightning(hold) {
+    const atmos = document.getElementById("atmos");
+    if (atmos) atmos.classList.add("storm");
+    setWeather(true, stormState(score).cycle || weather.cycle || 2);
+    // let clouds be visible if they just spawned
+    for (let i = 0; i < weather.clouds.length; i++) {
+      if (weather.clouds[i].alpha < 0.7) weather.clouds[i].alpha = 0.92;
+      weather.clouds[i].x = weather.clouds[i].homeX;
+    }
+    flashLightning({ hold: hold || 700 });
+    if (!weather.raf) weather.raf = requestAnimationFrame(weatherTick);
+  }
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", function () { sizeWeather(); positionTuto(); });
+  }
+
+  function emptyCellList(b) {
+    const empty = [];
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (!b[r][c]) empty.push({ r: r, c: c });
+    return empty;
+  }
+  function plantStormVine(b) {
+    const empty = emptyCellList(b);
+    if (empty.length <= 6) return null;
+    const p = empty[Math.floor(Math.random() * empty.length)];
+    b[p.r][p.c] = { symbol: L.VINE, color: "#2fae4a" };
+    return p;
+  }
+  function topUpStones(b, target, avoid) {
+    if (!target) return [];
+    const have = L.countStones(b);
+    if (have >= target) return [];
+    return L.addStones(b, target - have, null, avoid);
+  }
+  function ensureStormVines(b, s) {
+    const p = stormParams(s);
+    if (!p || !p.maxVines) return [];
+    const added = [];
+    let have = L.countVines(b);
+    while (have < p.maxVines) {
+      const v = plantStormVine(b);
+      if (!v) break;
+      added.push(v);
+      have++;
+    }
+    return added;
+  }
+  function generateStormPiece(p) {
+    const pool = [];
+    for (let i = 0; i < L.SHAPES.length; i++) {
+      const n = L.SHAPES[i].length;
+      if (n < 5) continue;
+      if (n >= 9 && Math.random() >= p.allow9) continue;
+      let w = n <= 6 ? 3 : 1;
+      if (n >= 6) w += 1;
+      if (n >= 9) w += 2;
+      for (let k = 0; k < w; k++) pool.push(L.SHAPES[i]);
+    }
+    if (!pool.length) return L.generatePiece();
+    const shape = L.normalizeShape(pool[Math.floor(Math.random() * pool.length)]);
+    const rnd = Math.random;
+    const a = L.SYMBOLS[Math.floor(rnd() * L.SYMBOLS.length)];
+    const others = L.SYMBOLS.filter(function (x) { return x !== a; });
+    const b = others[Math.floor(rnd() * others.length)];
+    const n = shape.length;
+    if (n === 1) return L.makePiece(shape, [a]);
+    const nb = function (i, j) { return Math.abs(shape[i][0] - shape[j][0]) + Math.abs(shape[i][1] - shape[j][1]) === 1; };
+    const deg = shape.map(function (_, i) { let d = 0; for (let j = 0; j < n; j++) if (i !== j && nb(i, j)) d++; return d; });
+    const minDeg = Math.min.apply(null, deg);
+    const ends = []; for (let i = 0; i < n; i++) if (deg[i] === minDeg) ends.push(i);
+    const start = ends[Math.floor(rnd() * ends.length)];
+    const order = [start], seen = {}; seen[start] = 1;
+    for (let k = 0; k < order.length; k++) {
+      for (let j = 0; j < n; j++) if (!seen[j] && nb(order[k], j)) { seen[j] = 1; order.push(j); }
+    }
+    const half = rnd() < 0.5 ? Math.floor(n / 2) : Math.ceil(n / 2);
+    const syms = Array(n);
+    for (let k = 0; k < n; k++) syms[order[k]] = k < half ? a : b;
+    return L.makePiece(shape, syms);
+  }
+  function applyStormTray(trayIn, s) {
+    const p = stormParams(s);
+    if (!p) return trayIn;
+    let nRep = 0;
+    if (Math.random() < p.largeChance) nRep = p.large;
+    if (p.secondLarge && Math.random() < p.secondLarge) nRep = Math.max(nRep, 2);
+    if (p.thirdLarge && Math.random() < p.thirdLarge) nRep = 3;
+    if (!nRep) return trayIn;
+    const idxs = [0, 1, 2];
+    for (let i = idxs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = idxs[i]; idxs[i] = idxs[j]; idxs[j] = t;
+    }
+    const next = trayIn.slice();
+    const originals = trayIn.slice();
+    for (let i = 0; i < nRep && i < 3; i++) next[idxs[i]] = generateStormPiece(p);
+    if (!anyFitsAnyRot(board, next)) {
+      for (let i = 0; i < 3; i++) {
+        if (originals[i] && pieceFitsAnyRot(board, originals[i])) {
+          next[idxs[0]] = originals[i];
+          break;
+        }
+      }
+    }
+    return next;
+  }
+  function applyStormSpawn(b, s) {
+    const p = stormParams(s);
+    if (!p) return { stones: [], vines: [] };
+    const stones = topUpStones(b, p.minStones);
+    const vines = ensureStormVines(b, s);
+    return { stones: stones, vines: vines };
+  }
+  const VINE_SPREAD_DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+
+  function vineSpreadPeriod() {
+    const st = stormState(score);
+    if (st && st.phase === "calm") return 4;
+    return 3;
+  }
+  function vineCellCap() {
+    const st = stormState(score);
+    if (st && st.phase === "storm") {
+      const c = Math.min(st.cycle || 1, STORM_CAP);
+      return Math.min(5, 2 + Math.min(c, 3));
+    }
+    return 3;
+  }
+  function vinePipsHtml(cell) {
+    const total = (cell && cell.vineMax != null) ? cell.vineMax : ((cell && cell.vineTicks) || 3);
+    const on = (cell && cell.vineTicks != null) ? cell.vineTicks : total;
+    let s = '<div class="vine-pips" aria-hidden="true">';
+    for (let i = 0; i < total; i++) {
+      const lit = i < on;
+      s += '<span class="pip' + (lit ? " on" : "") + (lit && on === 1 && i === on - 1 ? " warn" : "") + '"></span>';
+    }
+    return s + "</div>";
+  }
+  function armTrapped(cell, origin) {
+    if (!cell) return origin;
+    if (origin == null) origin = vineOriginSeq++;
+    cell.vineOrigin = origin;
+    cell.vineTicks = vineSpreadPeriod();
+    cell.vineMax = cell.vineTicks;
+    return origin;
+  }
+  function clearVineMeta(cell) {
+    if (!cell) return;
+    delete cell.vineTicks;
+    delete cell.vineMax;
+    delete cell.vineOrigin;
+  }
+  function cleanFreedVineMeta() {
+    for (let r = 0; r < L.SIZE; r++) {
+      for (let c = 0; c < L.SIZE; c++) {
+        const v = board[r][c];
+        if (v && !v.trapped && !L.isVine(v)) {
+          delete v.vineTicks;
+          delete v.vineMax;
+          delete v.vineOrigin;
+        }
+      }
+    }
+  }
+  function syncVineMeta() {
+    cleanFreedVineMeta();
+    for (let r = 0; r < L.SIZE; r++) {
+      for (let c = 0; c < L.SIZE; c++) {
+        const v = board[r][c];
+        if (v && v.trapped && v.vineTicks == null) armTrapped(v, v.vineOrigin);
+      }
+    }
+  }
+  function listTrappedRefs() {
+    const refs = [];
+    for (let r = 0; r < L.SIZE; r++) {
+      for (let c = 0; c < L.SIZE; c++) {
+        if (board[r][c] && board[r][c].trapped) refs.push(board[r][c]);
+      }
+    }
+    return refs;
+  }
+  function locateCell(cell) {
+    for (let r = 0; r < L.SIZE; r++) {
+      for (let c = 0; c < L.SIZE; c++) {
+        if (board[r][c] === cell) return { r: r, c: c };
+      }
+    }
+    return null;
+  }
+  function snapshotVineOrigins() {
+    const map = Object.create(null);
+    for (let r = 0; r < L.SIZE; r++) {
+      for (let c = 0; c < L.SIZE; c++) {
+        const v = board[r][c];
+        if (v && L.isVine(v) && v.vineOrigin != null) map[r + "," + c] = v.vineOrigin;
+      }
+    }
+    return map;
+  }
+  function adoptVineCaptures(moves, originMap) {
+    if (!moves) return;
+    for (let i = 0; i < moves.length; i++) {
+      const mv = moves[i];
+      if (!mv.captured) continue;
+      const cell = board[mv.captured.r][mv.captured.c];
+      if (!cell) continue;
+      const key = mv.from.r + "," + mv.from.c;
+      const origin = originMap && originMap[key];
+      armTrapped(cell, origin);
+    }
+  }
+  function countOriginVineCells(origin) {
+    if (origin == null) return 0;
+    let n = 0;
+    for (let r = 0; r < L.SIZE; r++) {
+      for (let c = 0; c < L.SIZE; c++) {
+        const v = board[r][c];
+        if (v && L.isVine(v) && v.vineOrigin === origin) n++;
+      }
+    }
+    return n;
+  }
+  function pickSpreadTarget(r, c, origin) {
+    const figs = [], empties = [];
+    for (let d = 0; d < VINE_SPREAD_DIRS.length; d++) {
+      const rr = r + VINE_SPREAD_DIRS[d][0], cc = c + VINE_SPREAD_DIRS[d][1];
+      if (!L.inBounds(rr, cc)) continue;
+      const v = board[rr][cc];
+      if (!v) empties.push({ r: rr, c: cc, kind: "plant" });
+      else if (L.isFigure(v) && !v.trapped) figs.push({ r: rr, c: cc, kind: "trap" });
+    }
+    if (figs.length) return figs[0];
+    if (empties.length && countOriginVineCells(origin) < vineCellCap()) return empties[0];
+    return null;
+  }
+  function applySpread(target, origin) {
+    if (!target) return;
+    if (target.kind === "trap") {
+      const fig = board[target.r][target.c];
+      if (!fig) return;
+      fig.trapped = true;
+      armTrapped(fig, origin);
+    } else {
+      board[target.r][target.c] = { symbol: L.VINE, color: "#2fae4a", vineOrigin: origin };
+    }
+  }
+  function tickVineSpreads(refs) {
+    const spreads = [];
+    cleanFreedVineMeta();
+    const live = [];
+    const src = refs || listTrappedRefs();
+    for (let i = 0; i < src.length; i++) {
+      const cell = src[i];
+      if (!cell || !cell.trapped) continue;
+      const pos = locateCell(cell);
+      if (!pos) continue;
+      live.push({ cell: cell, r: pos.r, c: pos.c });
+    }
+    live.sort(function (a, b) { return a.r - b.r || a.c - b.c; });
+    for (let i = 0; i < live.length; i++) {
+      const t = live[i];
+      if (t.cell.vineOrigin == null) t.cell.vineOrigin = vineOriginSeq++;
+      if (t.cell.vineTicks == null) {
+        t.cell.vineTicks = vineSpreadPeriod();
+        t.cell.vineMax = t.cell.vineTicks;
+      }
+      t.cell.vineTicks--;
+      if (t.cell.vineTicks > 0) continue;
+      const target = pickSpreadTarget(t.r, t.c, t.cell.vineOrigin);
+      if (target) {
+        applySpread(target, t.cell.vineOrigin);
+        spreads.push({ from: { r: t.r, c: t.c }, target: target });
+      }
+      t.cell.vineTicks = vineSpreadPeriod();
+      t.cell.vineMax = t.cell.vineTicks;
+    }
+    return spreads;
+  }
+  async function runVineStep(waitMs) {
+    const originMap = snapshotVineOrigins();
+    const moves = L.moveVines(board);
+    if (moves.length) {
+      adoptVineCaptures(moves, originMap);
+      await playVineMoves(moves, waitMs);
+    }
+    return moves;
+  }
+  function playVineSpreads(spreads) {
+    if (!spreads || !spreads.length) return Promise.resolve();
+    for (let i = 0; i < spreads.length; i++) {
+      const t = spreads[i].target;
+      const el = cellEls[t.r] && cellEls[t.r][t.c];
+      if (!el) continue;
+      el.classList.add(t.kind === "trap" ? "vinecatch" : "vinegrow");
+    }
+    const captures = spreads.map(function (s) {
+      return { from: s.from, captured: { r: s.target.r, c: s.target.c } };
+    });
+    return playVineCaptures(captures);
+  }
+
+    async function playVineMoves(moves, waitMs) {
+    if (!moves || !moves.length) return false;
+    const captures = [];
+    renderBoard();
+    for (let i = 0; i < moves.length; i++) {
+      const mv = moves[i];
+      if (mv.to) cellEls[mv.to.r][mv.to.c].classList.add("vinegrow");
+      if (mv.captured) {
+        captures.push(mv);
+        cellEls[mv.captured.r][mv.captured.c].classList.add("vinecatch");
+      }
+    }
+    if (captures.length) await playVineCaptures(captures);
+    else await sleep(waitMs == null ? 280 : waitMs);
+    return true;
+  }
+
+  function emptyCellCount(b) {
+    let n = 0;
+    for (let r = 0; r < L.SIZE; r++) {
+      for (let c = 0; c < L.SIZE; c++) if (!b[r][c]) n++;
+    }
+    return n;
+  }
+  function boardMostlyEmpty(b) {
+    return emptyCellCount(b) > (L.SIZE * L.SIZE) / 2;
+  }
+  function shapeFingerprint(shape) {
+    const norm = L.normalizeShape(shape);
+    return norm.map(function (p) { return p[0] + "," + p[1]; }).join(";");
+  }
+  function pieceFingerprint(piece) {
+    if (!piece || !piece.cells) return "";
+    return shapeFingerprint(piece.cells.map(function (c) { return [c.dr, c.dc]; }));
+  }
+  function pieceRotFingerprints(piece) {
+    const set = Object.create(null);
+    if (!piece) return set;
+    let p = piece;
+    for (let i = 0; i < 4; i++) {
+      set[pieceFingerprint(p)] = true;
+      p = rotatePieceCW(p);
+    }
+    return set;
+  }
+  function colorShape(shape, prefer, variant) {
+    const symbols = L.SYMBOLS;
+    const n = shape.length;
+    if (prefer && prefer.cells && prefer.cells.length === n && variant === 0) {
+      return L.makePiece(shape, prefer.cells.map(function (c) { return c.symbol; }));
+    }
+    const a = symbols[(variant || 0) % symbols.length];
+    const b = symbols[((variant || 0) + 1) % symbols.length];
+    if (n === 1) return L.makePiece(shape, [a]);
+    const half = variant % 2 === 0 ? Math.ceil(n / 2) : Math.floor(n / 2) || 1;
+    const syms = [];
+    for (let i = 0; i < n; i++) syms.push(i < half ? a : b);
+    return L.makePiece(shape, syms);
+  }
+  function makeFittingPiece(prefer) {
+    const shapes = L.SHAPES.slice();
+    const prefSize = prefer && prefer.cells ? prefer.cells.length : 3;
+    const same = pieceRotFingerprints(prefer);
+    shapes.sort(function (a, b) {
+      const fa = same[shapeFingerprint(a)] ? 0 : 1;
+      const fb = same[shapeFingerprint(b)] ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+      const da = Math.abs(a.length - prefSize), db = Math.abs(b.length - prefSize);
+      if (da !== db) return da - db;
+      return a.length - b.length;
+    });
+    for (let s = 0; s < shapes.length; s++) {
+      const shape = shapes[s];
+      for (let v = 0; v < 4; v++) {
+        const piece = colorShape(shape, prefer, v);
+        if (pieceFitsAnyRot(board, piece)) return piece;
+      }
+    }
+    return null;
+  }
+  function updateSaveIcon() {
+    const el = document.getElementById("saveIcon");
+    if (!el) return;
+    const show = mode === "infinite";
+    el.classList.toggle("hidden", !show);
+    el.classList.toggle("used", !!saveUsed);
+    const label = saveUsed ? "Salvado ya usado" : "Salvado disponible";
+    el.setAttribute("aria-label", label);
+    el.title = label;
+  }
+  function playSalvadoFx(idx) {
+    const slot = trayEl && trayEl.children[idx];
+    if (!slot) return;
+    slot.classList.add("salvado");
+    const sparks = document.createElement("div");
+    sparks.className = "save-sparks";
+    sparks.setAttribute("aria-hidden", "true");
+    const spots = [[18, 22, -6, -12], [72, 20, 8, -14], [30, 70, -8, 6], [78, 64, 10, 4], [50, 16, 0, -16]];
+    for (let i = 0; i < spots.length; i++) {
+      const d = document.createElement("i");
+      d.style.left = spots[i][0] + "%";
+      d.style.top = spots[i][1] + "%";
+      d.style.setProperty("--sx", spots[i][2] + "px");
+      d.style.setProperty("--sy", spots[i][3] + "px");
+      d.style.animationDelay = (i * 0.05) + "s";
+      sparks.appendChild(d);
+    }
+    slot.appendChild(sparks);
+    setTimeout(function () {
+      slot.classList.remove("salvado");
+      if (sparks.parentNode) sparks.remove();
+    }, 700);
+  }
+  async function trySalvado() {
+    if (mode !== "infinite" || saveUsed || over || won) return false;
+    if (!boardMostlyEmpty(board)) return false;
+    let idx = -1;
+    for (let i = 0; i < tray.length; i++) if (tray[i]) { idx = i; break; }
+    if (idx < 0) return false;
+    const piece = makeFittingPiece(tray[idx]);
+    if (!piece) return false;
+    saveUsed = true;
+    tray[idx] = piece;
+    updateSaveIcon();
+    renderTray();
+    playSalvadoFx(idx);
+    showBanner("¡Salvado!", "save");
+    try { beep("combo"); buzz([20, 30, 40]); } catch (e) {}
+    const reduced = typeof vinePrefersReduced === "function" && vinePrefersReduced();
+    await sleep(reduced ? 80 : 480);
+    return true;
+  }
+
+    async function maybeRefill() {
     if (won || goalMet()) return;
     if (tray.every(function (p) { return !p; })) {
       tray = L.generateTrio();
+      tray = applyStormTray(tray, score);
       const sp = L.spawnForTrio(board, score);
+      const extra = applyStormSpawn(board, score);
       renderBoard();
-      growStoneCells(sp.stones);
+      growStoneCells((sp.stones || []).concat(extra.stones || []));
       if (sp.vine) cellEls[sp.vine.r][sp.vine.c].classList.add("vinegrow");
+      (extra.vines || []).forEach(function (v) { cellEls[v.r][v.c].classList.add("vinegrow"); });
       renderTray();
-      if (L.gustDue(score, windState)) await doGust();
+      if (!pendingGust && (L.gustDue(score, windState) || (stormState(score).phase === "storm" && Math.random() < 0.22))) {
+        scheduleGust();
+      }
     }
     renderTray();
     if (won || goalMet()) return;
-    if (!anyFitsAnyRot(board, tray)) endGame(); // el fin se comprueba después de la ráfaga (todas las rotaciones)
+    if (!anyFitsAnyRot(board, tray)) {
+      if (await trySalvado()) return;
+      endGame(); // el fin se comprueba después de la ráfaga (todas las rotaciones)
+    }
   }
 
   function windStreaks(dir) {
@@ -3786,10 +5330,187 @@
     setTimeout(function () { fx.remove(); }, 1100);
   }
 
+
+  function lineCoords(dir, index) {
+    const out = [];
+    for (let i = 0; i < 8; i++) {
+      if (dir === "left" || dir === "right") out.push({ r: index, c: i });
+      else out.push({ r: i, c: index });
+    }
+    return out;
+  }
+  function lineValues(b, dir, index) {
+    return lineCoords(dir, index).map(function (p) { return b[p.r][p.c]; });
+  }
+  function rotatedLine(vals, dir) {
+    const rot = (dir === "right" || dir === "down") ? 1 : -1;
+    const out = new Array(8);
+    for (let i = 0; i < 8; i++) out[i] = vals[(i - rot + 8) % 8];
+    return out;
+  }
+  function countLineFigures(vals) {
+    let n = 0;
+    for (let i = 0; i < vals.length; i++) if (L.isFigure(vals[i])) n++;
+    return n;
+  }
+  function wrapJoinBonus(vals, dir) {
+    const rot = rotatedLine(vals, dir);
+    let bonus = 0;
+    for (let i = 0; i < 8; i++) {
+      const a = rot[i], b = rot[(i + 1) % 8];
+      if (L.isFigure(a) && L.isFigure(b) && a.symbol === b.symbol) {
+        const was = vals[i] && vals[(i + 1) % 8] && L.isFigure(vals[i]) && L.isFigure(vals[(i + 1) % 8]) && vals[i].symbol === vals[(i + 1) % 8].symbol;
+        if (!was) bonus += 6;
+      }
+    }
+    // run length 4+ on the wrapped line
+    let run = 1;
+    for (let i = 1; i <= 8; i++) {
+      const prev = rot[(i - 1) % 8], cur = rot[i % 8];
+      if (L.isFigure(prev) && L.isFigure(cur) && prev.symbol === cur.symbol) {
+        run++;
+        if (i === 8 && run >= 5) bonus += 20;
+      } else {
+        if (run >= 4) bonus += 18;
+        run = 1;
+      }
+    }
+    return bonus;
+  }
+  function pickGust(dirName) {
+    const dirs = dirName
+      ? L.WIND_DIRS.filter(function (d) { return d.name === dirName; })
+      : L.WIND_DIRS.slice();
+    if (!dirName) {
+      for (let i = dirs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = dirs[i]; dirs[i] = dirs[j]; dirs[j] = t;
+      }
+    }
+    if (!dirs.length) return null;
+    const storm = stormState(score).phase === "storm";
+    const cands = [];
+    for (let d = 0; d < dirs.length; d++) {
+      const dir = dirs[d].name;
+      for (let index = 0; index < 8; index++) {
+        const vals = lineValues(board, dir, index);
+        const figs = countLineFigures(vals);
+        if (!figs) continue;
+        let s = figs * 3 + wrapJoinBonus(vals, dir);
+        if (storm) s += figs * 2;
+        cands.push({ dir: dir, dr: dirs[d].dr, dc: dirs[d].dc, index: index, score: s, axis: (dir === "left" || dir === "right") ? "row" : "col" });
+      }
+    }
+    if (!cands.length) return null;
+    cands.sort(function (a, b) { return b.score - a.score; });
+    // pick among the better half, slightly random, so it is not always the same line
+    const top = cands.slice(0, Math.max(1, Math.ceil(cands.length * (storm ? 0.35 : 0.5))));
+    const pick = top[Math.floor(Math.random() * top.length)];
+    return pick;
+  }
+  function scheduleGust(spec) {
+    if (pendingGust && !spec) return pendingGust;
+    const g = spec ? {
+      dir: spec.dir,
+      dr: spec.dr != null ? spec.dr : (spec.dir === "down" ? 1 : spec.dir === "up" ? -1 : 0),
+      dc: spec.dc != null ? spec.dc : (spec.dir === "right" ? 1 : spec.dir === "left" ? -1 : 0),
+      index: spec.index,
+      axis: (spec.dir === "left" || spec.dir === "right") ? "row" : "col"
+    } : pickGust(spec && spec.dir);
+    if (!g) return null;
+    pendingGust = g;
+    renderWindWarning();
+    return pendingGust;
+  }
+  function shiftLineWrap(b, dir, index) {
+    const meta = L.WIND_DIRS.filter(function (d) { return d.name === dir; })[0] || { name: dir, dr: 0, dc: 1 };
+    const coords = lineCoords(dir, index);
+    const vals = coords.map(function (p) { return b[p.r][p.c]; });
+    const rot = (dir === "right" || dir === "down") ? 1 : -1;
+    const moved = [];
+    for (let i = 0; i < 8; i++) {
+      const src = (i - rot + 8) % 8;
+      moved.push({ from: coords[src], to: coords[i], val: vals[src] });
+    }
+    for (let i = 0; i < 8; i++) b[coords[i].r][coords[i].c] = moved[i].val;
+    return {
+      dir: dir, dr: meta.dr, dc: meta.dc, index: index,
+      axis: (dir === "left" || dir === "right") ? "row" : "col",
+      moves: moved.filter(function (m) { return m.val; })
+    };
+  }
+  function renderWindWarning() {
+    const marks = document.getElementById("windMarks");
+    const cue = document.getElementById("windCue");
+    if (!marks || !cue) return;
+    marks.innerHTML = "";
+    if (cellEls && cellEls.length) {
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+        if (cellEls[r] && cellEls[r][c]) cellEls[r][c].classList.remove("wind-soon");
+      }
+    }
+    if (!pendingGust || over) {
+      cue.classList.add("hidden");
+      marks.classList.add("hidden");
+      return;
+    }
+    const wrap = boardEl.parentNode.getBoundingClientRect();
+    const br = boardEl.getBoundingClientRect();
+    marks.classList.remove("hidden");
+    marks.style.left = (br.left - wrap.left) + "px";
+    marks.style.top = (br.top - wrap.top) + "px";
+    marks.style.width = br.width + "px";
+    marks.style.height = br.height + "px";
+    const mt = boardMetrics();
+    const pad = mt.pad, gap = mt.gap, stride = mt.stride;
+    const idx = pendingGust.index;
+    const dir = pendingGust.dir;
+    const band = document.createElement("div");
+    band.className = "wind-line";
+    if (dir === "left" || dir === "right") {
+      band.style.left = pad + "px";
+      band.style.top = (pad + idx * (stride + gap)) + "px";
+      band.style.width = (8 * stride + 7 * gap) + "px";
+      band.style.height = stride + "px";
+    } else {
+      band.style.left = (pad + idx * (stride + gap)) + "px";
+      band.style.top = pad + "px";
+      band.style.width = stride + "px";
+      band.style.height = (8 * stride + 7 * gap) + "px";
+    }
+    marks.appendChild(band);
+    const arrow = document.createElement("div");
+    arrow.className = "wind-arrow " + dir;
+    const mid = pad + idx * (stride + gap) + stride / 2;
+    if (dir === "right") { arrow.style.left = (pad + 8 * stride + 7 * gap - 4) + "px"; arrow.style.top = (mid - 9) + "px"; }
+    if (dir === "left") { arrow.style.left = "-1px"; arrow.style.top = (mid - 9) + "px"; }
+    if (dir === "down") { arrow.style.top = (pad + 8 * stride + 7 * gap - 4) + "px"; arrow.style.left = (mid - 9) + "px"; }
+    if (dir === "up") { arrow.style.top = "-1px"; arrow.style.left = (mid - 9) + "px"; }
+    marks.appendChild(arrow);
+    const glyphs = { left: "←", right: "→", up: "↑", down: "↓" };
+    cue.classList.remove("hidden");
+    cue.innerHTML = "Viento <span>" + (glyphs[dir] || "→") + "</span>";
+    cue.style.left = (br.left - wrap.left + br.width / 2) + "px";
+    cue.style.top = (br.top - wrap.top - 28) + "px";
+    const cells = lineCoords(dir, idx);
+    for (let i = 0; i < cells.length; i++) {
+      const p = cells[i];
+      if (cellEls[p.r] && cellEls[p.r][p.c]) cellEls[p.r][p.c].classList.add("wind-soon");
+    }
+  }
+
   async function doGust(dirName) {
+    const wasLocked = locked;
     locked = true;
+    const spec = pendingGust || (dirName ? pickGust(dirName) : pickGust());
+    pendingGust = null;
+    renderWindWarning();
+    if (!spec) {
+      if (!wasLocked && !over) locked = false;
+      return null;
+    }
     gustCount++;
-    const g = L.windGust(board, null, dirName);
+    const g = shiftLineWrap(board, spec.dir, spec.index);
     showBanner("💨 ¡Ráfaga!", "wind");
     windStreaks(g.dir);
     buzz([10, 30, 10]);
@@ -3852,7 +5573,7 @@
     updateHud();
     await maybeShowRespawn(stoneBeforeGust, gustBrokenStones);
     if (await maybeWin()) return g;
-    locked = false;
+    if (!wasLocked && !over) locked = false;
     return g;
   }
 
@@ -3987,10 +5708,13 @@
   // Si el grupo de piedras ha desaparecido por completo, nace una en otro sitio
   async function maybeShowRespawn(stoneBefore, avoid) {
     const added = L.maybeRespawnStones(board, stoneBefore, null, avoid);
-    if (!added.length) return false;
+    const p = stormParams(score);
+    const extra = p ? topUpStones(board, p.minStones, avoid) : [];
+    const all = added.concat(extra);
+    if (!all.length) return false;
     renderBoard();
-    growStoneCells(added);
-    showToast("¡Las piedras aparecen en otro sitio!");
+    growStoneCells(all);
+    if (added.length) showToast("¡Las piedras aparecen en otro sitio!");
     beep("stone");
     await sleep(280);
     return true;
@@ -4009,6 +5733,10 @@
     renderTray();
     beep("place");
     buzz(10);
+    if (tutoOpen) {
+      tutoPlaced++;
+      if (tutoPlaced >= 2) dismissTuto();
+    }
 
     const placePts = L.placeScore(placed.length);
     setScore(score + placePts);
@@ -4058,25 +5786,31 @@
     if (await maybeShowRespawn(stoneBefore, brokenStones)) { /* el grupo entero se ha roto y nace en otro sitio */ }
 
     // la enredadera avanza o atrapa una figura
-    const moves = L.moveVines(board);
-    if (moves.length) {
-      const captures = [];
-      renderBoard();
-      for (let i = 0; i < moves.length; i++) {
-        const mv = moves[i];
-        if (mv.to) cellEls[mv.to.r][mv.to.c].classList.add("vinegrow");
-        if (mv.captured) {
-          captures.push(mv);
-          cellEls[mv.captured.r][mv.captured.c].classList.add("vinecatch");
-        }
+    const trappedBefore = listTrappedRefs();
+    await runVineStep(280);
+    const pStorm = stormParams(score);
+    if (pStorm && pStorm.extraVineSteps) {
+      for (let vs = 0; vs < pStorm.extraVineSteps; vs++) {
+        await runVineStep(200);
       }
-      if (captures.length) await playVineCaptures(captures);
-      else await sleep(280);
+    }
+    if (pStorm) {
+      const replanted = ensureStormVines(board, score);
+      if (replanted.length) {
+        renderBoard();
+        replanted.forEach(function (v) { cellEls[v.r][v.c].classList.add("vinegrow"); });
+      }
     }
 
     const msg = praise(m.groups, nLines);
     if (msg) showToast(msg);
 
+    if (pendingGust) await doGust();
+    const spreads = tickVineSpreads(trappedBefore);
+    if (spreads.length) {
+      renderBoard();
+      await playVineSpreads(spreads);
+    }
     await maybeRefill();
     if (await maybeWin()) return true;
     if (!over) locked = false;
@@ -4283,7 +6017,14 @@
   document.getElementById("btnNiveles").addEventListener("click", goLevels);
   document.getElementById("btnBackMenu").addEventListener("click", goMenu);
 
-  window.__figuras = {
+
+  (function bindTutoCap() {
+    const cap = document.getElementById("tutoCap");
+    if (!cap) return;
+    cap.addEventListener("click", function (e) { e.preventDefault(); dismissTuto(); });
+  })();
+
+    window.__figuras = {
     newGame: newGame,
     getBoard: function () { return board; },
     getTray: function () { return tray; },
@@ -4306,6 +6047,9 @@
     anyFitsAnyRot: function () { return anyFitsAnyRot(board, tray); },
     setScore: function (n) { setScore(n); },
     gust: function (dir) { return doGust(dir); },
+    warnGust: function (spec) { return scheduleGust(spec); },
+    getPendingGust: function () { return pendingGust ? { dir: pendingGust.dir, index: pendingGust.index, axis: pendingGust.axis, dr: pendingGust.dr, dc: pendingGust.dc } : null; },
+    fireGust: function () { return doGust(); },
     getGustCount: function () { return gustCount; },
     getWindState: function () { return windState; },
     endGame: endGame,
@@ -4322,7 +6066,46 @@
     setPieceStyle: applyPieceStyle,
     getProgress: function () { return Object.assign({}, progress); },
     setProgress: function (p) { progress = p || {}; try { localStorage.setItem(PROG_KEY, JSON.stringify(progress)); } catch (e) {} },
-    sound: { isOn: function () { return soundOn; }, hasContext: function () { return Snd.hasContext(); }, state: function () { return Snd.ctxState(); }, unlock: function () { Snd.unlock(); } }
+    sound: { isOn: function () { return soundOn; }, hasContext: function () { return Snd.hasContext(); }, state: function () { return Snd.ctxState(); }, unlock: function () { Snd.unlock(); } },
+    stormState: function () { return stormState(score); },
+    stormName: function () { return stormNameFromState(stormState(score)); },
+    stormParams: function () { return stormParams(score); },
+    maybeRefill: function () { return maybeRefill(); },
+    forceLightning: function (hold) { return forceLightning(hold); },
+    getGates: function () { return { stones: GATE.stones, vines: GATE.vines, wind: GATE.wind, stones2: GATE.stones2, stormStart: STORM_START, stormLen: STORM_LEN, calmLen: CALM_LEN }; },
+    isSaveUsed: function () { return !!saveUsed; },
+    isTutoVisible: function () { return !!tutoOpen; },
+    tutoSeen: function () { return tutoSeen(); },
+    dismissTuto: function () { dismissTuto(); },
+    showTuto: function (force) { return maybeShowTuto(!!force); },
+    needsRotate: function (i) { return needsRotateToFit(board, tray[i]); },
+    tutoSlot: function () { return tutoIndex; },
+    emptyCellCount: function () { return emptyCellCount(board); },
+    trySalvado: function () { return trySalvado(); },
+    vineSpreadPeriod: function () { return vineSpreadPeriod(); },
+    vineCellCap: function () { return vineCellCap(); },
+    vineTicks: function (r, c) {
+      const v = board[r] && board[r][c];
+      return v && v.vineTicks != null ? v.vineTicks : null;
+    },
+    vineOrigin: function (r, c) {
+      const v = board[r] && board[r][c];
+      return v && v.vineOrigin != null ? v.vineOrigin : null;
+    },
+    armVine: function (r, c, origin) {
+      const v = board[r] && board[r][c];
+      if (!v) return null;
+      v.trapped = true;
+      armTrapped(v, origin);
+      renderBoard();
+      return { ticks: v.vineTicks, origin: v.vineOrigin, period: vineSpreadPeriod(), cap: vineCellCap() };
+    },
+    tickVines: function () {
+      const spreads = tickVineSpreads();
+      renderBoard();
+      return spreads;
+    },
+    playVineSpreads: function (spreads) { return playVineSpreads(spreads); }
   };
 
   (function fillFlies() {
