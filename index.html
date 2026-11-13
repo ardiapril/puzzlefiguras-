@@ -483,6 +483,26 @@
     filter: drop-shadow(0 2px 0 rgba(0,0,0,.28)) drop-shadow(0 3px 4px rgba(0,0,0,.25));
   }
   .slot.dragging { opacity: .28; }
+  .slot .rot-hint {
+    position: absolute;
+    right: 6px;
+    bottom: 5px;
+    width: 15px;
+    height: 15px;
+    pointer-events: none;
+    color: var(--text-dim);
+    opacity: .75;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.28));
+  }
+  [data-theme="light"] .slot .rot-hint { color: #6a5428; opacity: .72; }
+  .slot .rot-hint svg { width: 100%; height: 100%; display: block; }
+  .slot.dragging .rot-hint, .slot.nofit .rot-hint { opacity: .35; }
+  .slot .mini { transform-origin: center center; }
+  .slot .mini.turning {
+    transition: transform 180ms cubic-bezier(.22, .8, .32, 1);
+    transform: rotate(90deg);
+  }
+  .slot.rotating { pointer-events: none; }
   #dragLayer {
     position: fixed;
     left: 0; top: 0;
@@ -3096,6 +3116,68 @@
     }
   }
 
+
+  const ROT_MOVE_PX = 12;
+  const ROT_HINT_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.2 8A5.2 5.2 0 1 1 11 3.7"/><path d="M11 1.8v3h3"/></svg>';
+  let rotating = false;
+
+  function rotatePieceCW(piece) {
+    if (!piece || !piece.cells) return piece;
+    const shape = piece.cells.map(function (c) { return [c.dc, -c.dr]; });
+    const symbols = piece.cells.map(function (c) { return c.symbol; });
+    return L.makePiece(L.normalizeShape(shape), symbols);
+  }
+  function pieceSig(piece) {
+    return piece.cells.map(function (c) { return c.dr + ":" + c.dc + ":" + c.symbol; }).sort().join("|");
+  }
+  function pieceChangesOnRotate(piece) {
+    return !piece || !piece.cells || !piece.cells.length ? false : pieceSig(rotatePieceCW(piece)) !== pieceSig(piece);
+  }
+  function pieceFitsAnyRot(bd, piece) {
+    if (!piece) return false;
+    let p = piece;
+    for (let i = 0; i < 4; i++) {
+      if (L.pieceFits(bd, p)) return true;
+      p = rotatePieceCW(p);
+    }
+    return false;
+  }
+  function anyFitsAnyRot(bd, pieces) {
+    for (let i = 0; i < pieces.length; i++) {
+      if (pieces[i] && pieceFitsAnyRot(bd, pieces[i])) return true;
+    }
+    return false;
+  }
+  function rotateTrayPiece(index, slotEl) {
+    const piece = tray[index];
+    if (!piece || locked || over || rotating) return;
+    if (!pieceChangesOnRotate(piece)) return;
+    const next = rotatePieceCW(piece);
+    const slot = (slotEl && slotEl.isConnected) ? slotEl : trayEl.querySelector('.slot[data-i="' + index + '"]');
+    const mini = slot && slot.querySelector(".mini");
+    let finished = false;
+    function commit() {
+      if (finished) return;
+      finished = true;
+      tray[index] = next;
+      rotating = false;
+      renderTray();
+    }
+    rotating = true;
+    buzz(8);
+    if (!mini) { commit(); return; }
+    slot.classList.add("rotating");
+    void mini.offsetWidth;
+    mini.classList.add("turning");
+    const done = function (e) {
+      if (e && e.propertyName && e.propertyName !== "transform") return;
+      mini.removeEventListener("transitionend", done);
+      commit();
+    };
+    mini.addEventListener("transitionend", done);
+    setTimeout(done, 280);
+  }
+
   function pieceBounds(piece) {
     let maxR = 0, maxC = 0;
     for (let i = 0; i < piece.cells.length; i++) {
@@ -3147,8 +3229,15 @@
       slot.dataset.i = i;
       const piece = tray[i];
       if (piece) {
-        if (!L.pieceFits(board, piece)) slot.classList.add("nofit");
+        if (!pieceFitsAnyRot(board, piece)) slot.classList.add("nofit");
         slot.appendChild(renderMini(piece, trayCellSize(piece)));
+        if (pieceChangesOnRotate(piece)) {
+          const hint = document.createElement("span");
+          hint.className = "rot-hint";
+          hint.setAttribute("aria-hidden", "true");
+          hint.innerHTML = ROT_HINT_SVG;
+          slot.appendChild(hint);
+        }
         slot.addEventListener("pointerdown", onDown);
       }
       trayEl.appendChild(slot);
@@ -3712,7 +3801,7 @@
     }
     renderTray();
     if (won || goalMet()) return;
-    if (!L.anyFits(board, tray)) endGame(); // el fin se comprueba después de la ráfaga
+    if (!anyFitsAnyRot(board, tray)) endGame(); // el fin se comprueba después de la ráfaga (todas las rotaciones)
   }
 
   function windStreaks(dir) {
@@ -4080,7 +4169,7 @@
   }
 
   function updatePreview() {
-    if (!drag) { renderBoard(); return; }
+    if (!drag || !drag.ghost) { if (!drag) renderBoard(); return; }
     const at = originToCell(drag.originX, drag.originY);
     const piece = drag.piece;
     const cells = L.pieceCellsAt(piece, at.r, at.c);
@@ -4107,15 +4196,9 @@
     if (previewRaf) { cancelAnimationFrame(previewRaf); previewRaf = 0; }
   }
 
-  function onDown(e) {
-    if (locked || over) return;
-    const slot = e.currentTarget;
-    const index = parseInt(slot.dataset.i, 10);
-    const piece = tray[index];
-    if (!piece) return;
-    e.preventDefault();
-    try { slot.setPointerCapture(e.pointerId); } catch (err) {}
-    const pt = point(e);
+  function beginDragFrom(info, pt) {
+    const slot = info.slot && info.slot.isConnected ? info.slot : trayEl.querySelector('.slot[data-i="' + info.index + '"]');
+    const piece = info.piece;
     const size = dragCellPx();
     const ghost = renderMini(piece, size);
     ghost.style.position = "absolute";
@@ -4127,7 +4210,7 @@
     dragLayer.appendChild(ghost);
     const b = pieceBounds(piece);
     // grab the nearest cell of the piece in tray space
-    const slotRect = slot.getBoundingClientRect();
+    const slotRect = slot ? slot.getBoundingClientRect() : { left: pt.x, top: pt.y, width: 1, height: 1 };
     const localX = pt.x - slotRect.left;
     const localY = pt.y - slotRect.top;
     let anchorR = Math.round((b.rows - 1) / 2);
@@ -4140,51 +4223,85 @@
       const d = (cx - localX) * (cx - localX) + (cy - localY) * (cy - localY);
       if (d < bestD) { bestD = d; anchorR = occ[i].dr; anchorC = occ[i].dc; }
     }
+    info.ghost = ghost;
+    info.cellPx = size;
+    info.anchorR = anchorR;
+    info.anchorC = anchorC;
+    info.moved = true;
+    if (slot) slot.classList.add("dragging");
+    placeGhost(pt.x, pt.y);
+    updatePreview();
+  }
+
+  function onDown(e) {
+    if (locked || over || rotating) return;
+    const slot = e.currentTarget;
+    const index = parseInt(slot.dataset.i, 10);
+    const piece = tray[index];
+    if (!piece) return;
+    e.preventDefault();
+    try { slot.setPointerCapture(e.pointerId); } catch (err) {}
+    const pt = point(e);
     drag = {
       index: index,
       piece: piece,
-      ghost: ghost,
-      cellPx: size,
-      anchorR: anchorR,
-      anchorC: anchorC,
+      ghost: null,
+      cellPx: 0,
+      anchorR: 0,
+      anchorC: 0,
       pointerId: e.pointerId,
-      target: null
+      target: null,
+      startX: pt.x,
+      startY: pt.y,
+      moved: false,
+      slot: slot
     };
-    slot.classList.add("dragging");
-    placeGhost(pt.x, pt.y);
-    updatePreview();
   }
 
   function onMove(e) {
     if (!drag) return;
     if (e.pointerId != null && drag.pointerId != null && e.pointerId !== drag.pointerId) return;
-    e.preventDefault();
     const pt = point(e);
+    if (!drag.moved) {
+      const dx = pt.x - drag.startX, dy = pt.y - drag.startY;
+      if (dx * dx + dy * dy < ROT_MOVE_PX * ROT_MOVE_PX) return;
+      e.preventDefault();
+      beginDragFrom(drag, pt);
+      return;
+    }
+    e.preventDefault();
     placeGhost(pt.x, pt.y);
     schedulePreview();
   }
 
-  async function onUp(e) {
+  async function finishPointer(e, cancelled) {
     if (!drag) return;
     if (e && e.pointerId != null && drag.pointerId != null && e.pointerId !== drag.pointerId) return;
     if (e) e.preventDefault();
-    cancelPreview();
     const info = drag;
+    if (!info.moved) {
+      drag = null;
+      if (!cancelled) rotateTrayPiece(info.index, info.slot);
+      return;
+    }
+    cancelPreview();
     drag = null;
     dragLayer.innerHTML = "";
     renderBoard();
     const slot = trayEl.querySelector('.slot[data-i="' + info.index + '"]');
     if (slot) slot.classList.remove("dragging");
-    if (info.target && !info.target.bad) {
+    if (!cancelled && info.target && !info.target.bad) {
       await applyPlacement(info.index, info.target.r, info.target.c);
     } else {
       renderTray();
     }
   }
+  async function onUp(e) { await finishPointer(e, false); }
+  async function onCancel(e) { await finishPointer(e, true); }
 
   document.addEventListener("pointermove", onMove, { passive: false });
   document.addEventListener("pointerup", onUp, { passive: false });
-  document.addEventListener("pointercancel", onUp, { passive: false });
+  document.addEventListener("pointercancel", onCancel, { passive: false });
   document.addEventListener("touchmove", function (e) {
     if (drag) e.preventDefault();
   }, { passive: false });
@@ -4225,6 +4342,10 @@
     setTray: function (p) { tray = p; renderTray(); },
     setBoard: function (b) { board = b; renderBoard(); renderTray(); },
     placeAt: function (index, r, c) { return applyPlacement(index, r, c); },
+    rotateAt: function (index) { return rotateTrayPiece(index); },
+    rotatePieceCW: rotatePieceCW,
+    pieceFitsAnyRot: function (p) { return pieceFitsAnyRot(board, p); },
+    anyFitsAnyRot: function () { return anyFitsAnyRot(board, tray); },
     setScore: function (n) { setScore(n); },
     gust: function (dir) { return doGust(dir); },
     getGustCount: function () { return gustCount; },
