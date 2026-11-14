@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v33 valle de noche, móvil -->
+<!-- figuras v49 cierre del valle + viento y sonido -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -109,6 +109,7 @@
     flex-direction: column;
     padding: calc(var(--safe-t) + 10px) 16px calc(var(--safe-b) + 12px);
     position: relative;
+    z-index: 1;
   }
   header {
     display: flex;
@@ -192,13 +193,29 @@
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
-    align-items: flex-end;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     position: relative;
     padding-bottom: 0;
   }
+  .board-lift {
+    flex: 0 1 140px;
+    width: 0;
+    height: 140px;
+    min-height: 0;
+    pointer-events: none;
+    visibility: hidden;
+  }
+  #boardStage {
+    position: relative;
+    width: min(calc(100% - 36px), calc((100svh - 250px) * 0.88), 352px);
+    aspect-ratio: 1;
+    flex: 0 0 auto;
+  }
   #board {
-    width: min(100%, calc(100svh - 280px), 400px);
+    width: 100%;
+    height: 100%;
     aspect-ratio: 1;
     display: grid;
     grid-template-columns: repeat(8, 1fr);
@@ -210,6 +227,23 @@
     border: 1px solid var(--board-edge);
     box-shadow: var(--board-shadow);
     position: relative;
+  }
+  .board-rails {
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .board-rails-balance {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    pointer-events: none;
   }
   .cell {
     border-radius: 3px;
@@ -263,6 +297,15 @@
     width: 120%;
     height: 120%;
   }
+  .cell .vinesvg.vinebridge {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .cell.trapped .sym { z-index: 5; }
   .cell.trapped .vinesvg.vinewrap-in {
     animation: vinewrapIn .3s cubic-bezier(.22, .7, .3, 1) .26s both;
   }
@@ -508,15 +551,17 @@
     flex-shrink: 0;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-top: 8px;
-    min-height: 118px;
+    gap: 8px;
+    width: min(calc(100% - 36px), calc((100svh - 250px) * 0.88), 352px);
+    margin: 8px auto 0;
+    min-height: 96px;
+    align-self: center;
   }
   #app.tuto-open #tray { margin-top: 40px; }
   .slot {
     background: var(--slot);
     border-radius: 6px;
-    min-height: 118px;
+    min-height: 96px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -731,11 +776,13 @@
   .gate-track {
     position: relative;
     height: 7px;
-    margin: -2px 10px 20px;
+    width: min(calc(100% - 36px), calc((100svh - 250px) * 0.88), 352px);
+    margin: 4px auto 22px;
     background: rgba(255,255,255,.08);
     border: 1px solid rgba(170, 200, 185, .22);
     border-radius: 99px;
     flex-shrink: 0;
+    align-self: center;
   }
   .gate-track[hidden] { display: none !important; }
   .gate-track-fill {
@@ -774,25 +821,29 @@
   .gate-mark.is-last .gate-lab { transform: translateX(-90%); }
   .gate-mark.open .gate-lab { color: #e8f6c4; }
   .record-track {
-    height: 7px;
-    margin: -6px 2px 10px;
+    position: relative;
+    width: 6px;
+    height: 100%;
+    margin: 0;
     background: rgba(255,255,255,.1);
     border: 1px solid rgba(200,160,56,.25);
     border-radius: 99px;
     overflow: hidden;
-    flex-shrink: 0;
   }
-  
   .record-track[hidden] { display: none !important; }
   .record-track-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #C8A038, #FFE27A);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 0%;
+    background: linear-gradient(0deg, #C8A038, #FFE27A);
     border-radius: 99px;
-    transition: width .35s ease-out;
+    transition: height .35s ease-out;
   }
   .record-track.is-beat .record-track-fill {
-    background: linear-gradient(90deg, #E8C050, #FFF8D0);
+    background: linear-gradient(0deg, #E8C050, #FFF8D0);
     box-shadow: 0 0 8px rgba(255, 220, 100, .55);
   }
   .modal.record-win { position: relative; overflow: hidden; }
@@ -995,6 +1046,84 @@
   #windCue span { font-size: 1rem; line-height: 1; }
   @media (prefers-reduced-motion: reduce) {
     .wind-arrow, .wind-line { animation: none; }
+    .wind-sweep::after { animation: none; opacity: .45; transform: none; inset: 0; width: 100%; height: 100%; }
+    .cell .holevine path[fill="none"] { animation: none; stroke-dashoffset: 0; }
+  }
+  .wind-sweep {
+    position: absolute;
+    pointer-events: none;
+    z-index: 6;
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1.5px rgba(255, 226, 122, .6), 0 0 16px rgba(224, 176, 80, .4);
+    background: rgba(255, 220, 120, .12);
+  }
+  .wind-sweep::after {
+    content: "";
+    position: absolute;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,245,200,.85) 50%, transparent 100%);
+  }
+  .wind-sweep.right::after, .wind-sweep.left::after {
+    top: 0; bottom: 0; width: 42%; height: 100%;
+  }
+  .wind-sweep.right::after { animation: windsweep-x .5s ease-out forwards; }
+  .wind-sweep.left::after { animation: windsweep-xrev .5s ease-out forwards; }
+  .wind-sweep.down::after, .wind-sweep.up::after {
+    left: 0; right: 0; width: 100%; height: 42%;
+    background: linear-gradient(180deg, transparent 0%, rgba(255,245,200,.85) 50%, transparent 100%);
+  }
+  .wind-sweep.down::after { animation: windsweep-y .5s ease-out forwards; }
+  .wind-sweep.up::after { animation: windsweep-yrev .5s ease-out forwards; }
+  @keyframes windsweep-x {
+    0% { transform: translateX(-90%); opacity: 0; }
+    18% { opacity: 1; }
+    100% { transform: translateX(240%); opacity: 0; }
+  }
+  @keyframes windsweep-xrev {
+    0% { transform: translateX(240%); opacity: 0; }
+    18% { opacity: 1; }
+    100% { transform: translateX(-90%); opacity: 0; }
+  }
+  @keyframes windsweep-y {
+    0% { transform: translateY(-90%); opacity: 0; }
+    18% { opacity: 1; }
+    100% { transform: translateY(240%); opacity: 0; }
+  }
+  @keyframes windsweep-yrev {
+    0% { transform: translateY(240%); opacity: 0; }
+    18% { opacity: 1; }
+    100% { transform: translateY(-90%); opacity: 0; }
+  }
+  .wind-sweep.static::after { animation: none; opacity: .45; transform: none; inset: 0; width: 100%; height: 100%; }
+  .cell.dead-hole {
+    box-shadow: inset 0 0 0 1.5px rgba(110, 200, 120, .6), 0 0 12px rgba(50, 140, 70, .35);
+    background: #1a261c;
+  }
+  .cell .holevine {
+    position: absolute;
+    inset: -8%;
+    width: 116%;
+    height: 116%;
+    pointer-events: none;
+    z-index: 5;
+    overflow: visible;
+  }
+  .cell .holevine path[fill="none"] {
+    stroke-dasharray: 52;
+    stroke-dashoffset: 52;
+    animation: holeGrow .75s ease-out forwards;
+  }
+  @keyframes holeGrow {
+    to { stroke-dashoffset: 0; }
+  }
+  .modal h2.valley-title {
+    color: #d7e89a;
+    text-shadow: 0 0 16px rgba(80, 160, 70, .4);
+  }
+  .modal .valley-line {
+    color: #c8d98a;
+    font-weight: 700;
+    margin: 0 0 8px;
   }
 
   @keyframes windshake {
@@ -1139,11 +1268,11 @@
   #atmos.storm .shafts { opacity: .28; transition: opacity .9s ease; }
   #atmos .shafts { transition: opacity .9s ease; }
   #lightningFlash {
-    position: absolute; inset: 0;
+    position: absolute; top: var(--hud-safe, 148px); left: 0; right: 0; bottom: 0;
     z-index: 4;
     pointer-events: none;
     opacity: 0;
-    background: radial-gradient(ellipse 70% 50% at 50% 18%, rgba(255, 224, 96, .48), rgba(224, 176, 80, .14) 45%, transparent 70%);
+    background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255, 224, 96, .48), rgba(224, 176, 80, .14) 45%, transparent 70%);
   }
   #lightningFlash.boom { animation: boltflash .32s ease-out; }
   #lightningFlash.hold { opacity: .3; animation: none; }
@@ -1167,10 +1296,17 @@
     background: var(--btn-bg);
     color: var(--btn-fg);
     font-size: 1.05rem;
-    width: 38px; height: 36px;
+    width: 48px; height: 48px;
+    min-width: 48px; min-height: 48px;
     padding: 0;
     line-height: 1;
     border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
   }
   #btnSound:active { transform: scale(.94); }
   #btnSound.off { opacity: .7; }
@@ -1623,7 +1759,7 @@
   #btnNew, #btnMenu, #btnSound { border-radius: 2px; background: var(--btn-bg); }
   #btnNew, #btnMenu { font-size: .8rem; letter-spacing: .06em; font-weight: 600; padding: 8px 11px; }
   #btnSound { display: inline-flex; align-items: center; justify-content: center; color: var(--text); }
-  #btnSound svg { width: 18px; height: 18px; }
+  #btnSound svg { width: 22px; height: 22px; }
   .score { font-size: 1.5rem; text-shadow: 0 0 18px rgba(220,180,106,.25); }
   .score .crown { display: inline-flex; width: 18px; height: 18px; font-size: 0; filter: none; }
   .score .crown svg { width: 100%; height: 100%; }
@@ -1693,8 +1829,8 @@
   @media (max-width: 380px) {
     .brand { font-size: 1rem; letter-spacing: .18em; }
     #btnNew, #btnMenu { font-size: .74rem; padding: 7px 8px; }
-    #btnSound { width: 34px; }
-    .hdr-right { gap: 6px; }
+    #btnSound { width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
+    .hdr-right { gap: 5px; }
     .lv { gap: 8px; padding: 12px 12px; }
     .lv .lv-name { letter-spacing: .04em; font-size: .8rem; }
     .lv .lv-soon { font-size: .56rem; letter-spacing: .08em; gap: 4px; }
@@ -2171,9 +2307,15 @@
       <div class="best" id="bestWrap">Mejor <span id="best">0</span></div>
     </div>
     <div class="gate-track" id="gateTrack" hidden><div class="gate-track-fill" id="gateFill"></div><div id="gateMarks"></div></div>
-    <div class="record-track" id="recordTrack" hidden><div class="record-track-fill" id="recordFill"></div></div>
     <div id="boardWrap">
-      <div id="board" aria-label="Tablero"></div>
+      <div class="board-lift" aria-hidden="true"></div>
+      <div id="boardStage">
+        <div class="board-rails" id="boardRails">
+          <div class="record-track" id="recordTrack" hidden><div class="record-track-fill" id="recordFill"></div></div>
+        </div>
+        <div class="board-rails-balance" aria-hidden="true"></div>
+        <div id="board" aria-label="Tablero"></div>
+      </div>
       <div id="windMarks" class="hidden" aria-hidden="true"></div>
       <div id="windCue" class="hidden" aria-live="polite"></div>
       <div id="fx"></div>
@@ -2881,6 +3023,7 @@
   let unlocked = {};    // avisos de desbloqueo ya mostrados en esta partida
   let gustCount = 0;
   let pendingGust = null;
+  let gustCueHold = false;
   let lastStormKey = "none";
   let vineOriginSeq = 1;
   let saveUsed = false;
@@ -3003,6 +3146,7 @@
     return mode === "level" && !won && currentLevel() && goalValue() >= currentLevel().goal.n;
   }
   function goMenu() {
+    clearValleyClose();
     mode = "menu";
     updateMenuBest();
     showScreen("menu");
@@ -3287,6 +3431,32 @@
       c2x.toFixed(1) + " " + c2y.toFixed(1) + "," +
       x2.toFixed(1) + " " + y2.toFixed(1);
   }
+  function isJoinablePlant(v) {
+    return !!v && (v.trapped || L.isVine(v));
+  }
+  function wrapLinksAt(r, c) {
+    return {
+      n: r > 0 && isJoinablePlant(board[r - 1][c]),
+      e: c < L.SIZE - 1 && isJoinablePlant(board[r][c + 1]),
+      s: r < L.SIZE - 1 && isJoinablePlant(board[r + 1][c]),
+      w: c > 0 && isJoinablePlant(board[r][c - 1])
+    };
+  }
+  function wrapLinkKey(links) {
+    if (!links) return "";
+    return (links.n ? "N" : "") + (links.e ? "E" : "") + (links.s ? "S" : "") + (links.w ? "W" : "");
+  }
+  // Short wreath-to-wreath (or wreath-to-vine) tendril across the cell gap, v33 stroke.
+  function vineBridgeSvg(r, c, links) {
+    if (!links || !(links.n || links.e || links.s || links.w)) return "";
+    const sign = ((r + c) % 2) ? 1 : -1;
+    let g = "";
+    if (links.s) g += vineStem(tendrilCurve(11.6, 20.2, 12.3, 26.6, sign * 0.2), 1.45);
+    if (links.n) g += vineStem(tendrilCurve(12.4, 3.8, 11.7, -2.6, sign * 0.2), 1.45);
+    if (links.e) g += vineStem(tendrilCurve(20.2, 11.6, 26.6, 12.3, -sign * 0.2), 1.45);
+    if (links.w) g += vineStem(tendrilCurve(3.8, 12.4, -2.6, 11.7, -sign * 0.2), 1.45);
+    return '<svg class="vinesvg vinebridge" viewBox="-4 -4 32 32" aria-hidden="true">' + g + "</svg>";
+  }
   function vineReachSpecs(from, captured, wr) {
     const a = cellBox(from.r, from.c, wr);
     const b = cellBox(captured.r, captured.c, wr);
@@ -3450,7 +3620,8 @@
     const isVine = !!(v && v.symbol === L.VINE);
     const ghostSym = (!v && (kind === "match" || kind === "line") && hsym) ? hsym : "";
     const ticks = (trapped && v.vineTicks != null) ? v.vineTicks : "";
-    const content = vsym + "|" + (trapped ? 1 : 0) + "|" + (isStone ? "X" : "") + "|" + (isVine ? "V" : "") + "|" + ghostSym + "|" + ticks;
+    const links = trapped ? wrapLinksAt(r, c) : null;
+    const content = vsym + "|" + (trapped ? 1 : 0) + "|" + (isStone ? "X" : "") + "|" + (isVine ? "V" : "") + "|" + ghostSym + "|" + ticks + "|" + wrapLinkKey(links);
     const will = (kind === "match" && hsym) ? (COLOR[hsym] || "#fff") : "";
     let cls = "cell";
     if (preview === "ok") cls += " preview-ok";
@@ -3484,6 +3655,7 @@
       el.innerHTML = svgSymbol(v.symbol, COLOR[v.symbol] || v.color);
       if (trapped) {
         el.innerHTML += svgVine(true);
+        el.innerHTML += vineBridgeSvg(r, c, links);
         el.innerHTML += vinePipsHtml(v);
         if (v.vineTicks != null) el.setAttribute("data-vine-ticks", String(v.vineTicks));
         else el.removeAttribute("data-vine-ticks");
@@ -3673,9 +3845,9 @@
   function trayCellSize(piece) {
     const b = pieceBounds(piece);
     const slot = trayEl.getBoundingClientRect();
-    const w = (slot.width / 3) - 22;
-    const h = Math.max(90, (slot.height || 118) - 22);
-    return Math.max(16, Math.min(36, Math.floor(Math.min(w / b.cols, h / b.rows) - 2)));
+    const w = (slot.width / 3) - 16;
+    const h = Math.max(70, (slot.height || 96) - 16);
+    return Math.max(14, Math.min(28, Math.floor(Math.min(w / b.cols, h / b.rows) - 2)));
   }
 
   function needsRotateToFit(bd, piece) {
@@ -3872,12 +4044,13 @@
     const max = GATE.wind;
     const pct = Math.max(0, Math.min(100, 100 * score / max));
     fill.style.width = pct + "%";
+    fill.style.height = "";
     const gates = [
       { at: GATE.stones, key: "stones" },
       { at: GATE.vines, key: "vines" },
       { at: GATE.wind, key: "wind" }
     ];
-    if (!marks._built) {
+    if (!marks._built || marks._orient !== "h") {
       marks.innerHTML = "";
       for (let i = 0; i < gates.length; i++) {
         const g = gates[i];
@@ -3892,6 +4065,7 @@
         marks.appendChild(el);
       }
       marks._built = true;
+      marks._orient = "h";
     }
     const els = marks.children;
     for (let i = 0; i < els.length; i++) {
@@ -3906,7 +4080,8 @@
     track.hidden = !show;
     if (!show) return;
     const pct = Math.min(100, Math.round(100 * score / bestAtStart));
-    fill.style.width = pct + "%";
+    fill.style.height = pct + "%";
+    fill.style.width = "";
     track.classList.toggle("is-beat", score >= bestAtStart);
   }
   function setScore(n) {
@@ -4092,8 +4267,10 @@
       },
       wind: function () {
         const c = ready(); if (!c) return; const t = c.currentTime + 0.01;
-        noise(c, t, 0.6, 0.14, "bandpass", 300, 1500, 0.9);
-        tone(c, t, 300, "sine", 0.35, 0.03, { glide: 2.3 });
+        noise(c, t, 0.85, 0.22, "bandpass", 400, 2200, 0.8);
+        noise(c, t + 0.08, 0.7, 0.12, "highpass", 800, 2400, 0.7);
+        tone(c, t, 220, "sine", 0.55, 0.05, { glide: 2.8, glideT: 0.5 });
+        tone(c, t, 140, "sine", 0.4, 0.04, { glide: 0.5 });
       },
       over: function () {
         const c = ready(); if (!c) return; const t = c.currentTime + 0.01;
@@ -4380,6 +4557,7 @@
     dragLayer.innerHTML = "";
     overlayEl.classList.add("hidden");
     overlayEl.innerHTML = "";
+    clearValleyClose();
     fxEl.querySelectorAll(".flyer,.shard,.chunk,.sweep,.pts,.combo").forEach(function (n) { n.remove(); });
     renderScores();
     updateStorm();
@@ -4512,11 +4690,37 @@
     }
   }
 
-  const weather = { on: false, cycle: 1, drops: [], bolts: [], clouds: [], raf: 0, last: 0, nextFlash: 0, holdUntil: 0 };
+  const weather = { on: false, cycle: 1, drops: [], bolts: [], clouds: [], raf: 0, last: 0, nextFlash: 0, holdUntil: 0, hudY: 0 };
   function reducedMotion() {
     try { return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; }
   }
   function weatherCanvas() { return document.getElementById("weather"); }
+  function hudSafeBottom() {
+    let y = 0;
+    const app = document.getElementById("app");
+    const header = app && app.querySelector("header");
+    const scores = app && app.querySelector(".scores");
+    const gate = document.getElementById("gateTrack");
+    if (header) y = Math.max(y, header.getBoundingClientRect().bottom);
+    if (scores) y = Math.max(y, scores.getBoundingClientRect().bottom);
+    if (gate && gate.offsetParent !== null && !gate.classList.contains("hidden")) {
+      y = Math.max(y, gate.getBoundingClientRect().bottom);
+      const labs = gate.querySelectorAll(".gate-lab");
+      for (let i = 0; i < labs.length; i++) y = Math.max(y, labs[i].getBoundingClientRect().bottom);
+    }
+    return Math.ceil(y + 6);
+  }
+  function syncHudSafe() {
+    const y = hudSafeBottom();
+    const atmos = document.getElementById("atmos");
+    if (atmos) atmos.style.setProperty("--hud-safe", y + "px");
+    weather.hudY = Math.ceil(y / (weather.scale || 3));
+    return y;
+  }
+  function weatherHudY() {
+    if (!weather.hudY) syncHudSafe();
+    return weather.hudY || 0;
+  }
   function sizeWeather() {
     const cv = weatherCanvas();
     if (!cv) return;
@@ -4525,18 +4729,20 @@
     const h = Math.max(1, Math.ceil(window.innerHeight / scale));
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     weather.scale = scale; weather.w = w; weather.h = h;
+    syncHudSafe();
   }
   function seedDrops(n) {
     sizeWeather();
     const w = weather.w, h = weather.h;
+    const reduced = reducedMotion();
     weather.drops = [];
     for (let i = 0; i < n; i++) {
       weather.drops.push({
         x: Math.random() * w,
         y: Math.random() * h,
-        len: 2 + Math.floor(Math.random() * 4),
-        vy: 0.7 + Math.random() * 0.7,
-        vx: 0.15 + Math.random() * 0.2,
+        len: reduced ? (2 + Math.floor(Math.random() * 4)) : (4 + Math.floor(Math.random() * 6)),
+        vy: 0.75 + Math.random() * 0.75,
+        vx: reduced ? (0.15 + Math.random() * 0.2) : (0.28 + Math.random() * 0.32),
         a: 0.35 + Math.random() * 0.45
       });
     }
@@ -4687,8 +4893,9 @@
     const h = weather.h;
     const origin = pickBoltOrigin();
     const segs = [];
-    let x = origin.x, y = origin.y;
-    const skyFloor = Math.floor(h * 0.36);
+    const hy = weatherHudY();
+    let x = origin.x, y = Math.max(origin.y, hy);
+    const skyFloor = Math.max(hy + 12, Math.floor(h * 0.36));
     const targetY = Math.min(skyFloor, y + 40 + Math.floor(Math.random() * 28));
     while (y < targetY) {
       const nx = x + Math.floor(Math.random() * 7) - 3;
@@ -4709,6 +4916,11 @@
     return { segs: segs, life: 1, born: performance.now() };
   }
   function drawBolts(ctx) {
+    const hy = weatherHudY();
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, hy, weather.w, Math.max(0, weather.h - hy));
+    ctx.clip();
     for (let i = 0; i < weather.bolts.length; i++) {
       const b = weather.bolts[i];
       const a = Math.max(0, b.life);
@@ -4734,6 +4946,7 @@
         ctx.fillRect(Math.min(s.x1, s.x2), s.y2, Math.abs(s.x2 - s.x1) + 1, 1);
       }
     }
+    ctx.restore();
   }
   function flashLightning(opts) {
     opts = opts || {};
@@ -4763,6 +4976,12 @@
     const span = quiet ? 8000 : Math.max(1800, 5000 - c * 400);
     weather.nextFlash = performance.now() + min + Math.random() * span;
   }
+  function weatherRainSpeed() {
+    const c = Math.min(Math.max(weather.cycle || 1, 1), STORM_CAP);
+    // v33 era (reduced ? 0.55 : 0.85) + c * 0.12; ahora ~1.8× en la 1 y ~2.5× en la 6.
+    if (reducedMotion()) return 0.70 + c * 0.14;
+    return 1.75 + c * 0.36;
+  }
   function weatherTick(t) {
     weather.raf = 0;
     const cv = weatherCanvas();
@@ -4776,8 +4995,7 @@
     if (!running && !weather.drops.length && !weather.bolts.length) return;
     tickClouds();
     drawClouds(ctx);
-    const c = Math.min(Math.max(weather.cycle, 1), STORM_CAP);
-    const speed = (reducedMotion() ? 0.55 : 0.85) + c * 0.12;
+    const speed = weatherRainSpeed();
     const drops = weather.drops;
     const colA = "rgba(186, 204, 230,";
     const colB = "rgba(224, 232, 255,";
@@ -5439,6 +5657,27 @@
       moves: moved.filter(function (m) { return m.val; })
     };
   }
+  function windLineSweep(dir, index) {
+    if (!boardEl) return;
+    const quiet = reducedMotion();
+    const mt = boardMetrics();
+    const pad = mt.pad, gap = mt.gap, stride = mt.stride;
+    const el = document.createElement("div");
+    el.className = "wind-sweep " + dir + (quiet ? " static" : "");
+    if (dir === "left" || dir === "right") {
+      el.style.left = pad + "px";
+      el.style.top = (pad + index * (stride + gap)) + "px";
+      el.style.width = (8 * stride + 7 * gap) + "px";
+      el.style.height = stride + "px";
+    } else {
+      el.style.left = (pad + index * (stride + gap)) + "px";
+      el.style.top = pad + "px";
+      el.style.width = stride + "px";
+      el.style.height = (8 * stride + 7 * gap) + "px";
+    }
+    boardEl.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.remove(); }, quiet ? 420 : 720);
+  }
   function renderWindWarning() {
     const marks = document.getElementById("windMarks");
     const cue = document.getElementById("windCue");
@@ -5450,11 +5689,13 @@
       }
     }
     if (!pendingGust || over) {
+      if (gustCueHold && !over) return;
       cue.classList.add("hidden");
       marks.classList.add("hidden");
       return;
     }
-    const wrap = boardEl.parentNode.getBoundingClientRect();
+    const wrapEl = document.getElementById("boardWrap") || boardEl.parentNode;
+    const wrap = wrapEl.getBoundingClientRect();
     const br = boardEl.getBoundingClientRect();
     marks.classList.remove("hidden");
     marks.style.left = (br.left - wrap.left) + "px";
@@ -5491,7 +5732,10 @@
     cue.classList.remove("hidden");
     cue.innerHTML = "Viento <span>" + (glyphs[dir] || "→") + "</span>";
     cue.style.left = (br.left - wrap.left + br.width / 2) + "px";
-    cue.style.top = (br.top - wrap.top - 28) + "px";
+    const cueH = 28;
+    let cueTop = br.top - wrap.top - cueH - 6;
+    if (cueTop < 4) cueTop = Math.max(4, br.top - wrap.top + 6);
+    cue.style.top = cueTop + "px";
     const cells = lineCoords(dir, idx);
     for (let i = 0; i < cells.length; i++) {
       const p = cells[i];
@@ -5504,8 +5748,8 @@
     locked = true;
     const spec = pendingGust || (dirName ? pickGust(dirName) : pickGust());
     pendingGust = null;
-    renderWindWarning();
     if (!spec) {
+      renderWindWarning();
       if (!wasLocked && !over) locked = false;
       return null;
     }
@@ -5513,15 +5757,21 @@
     const g = shiftLineWrap(board, spec.dir, spec.index);
     showBanner("💨 ¡Ráfaga!", "wind");
     windStreaks(g.dir);
+    windLineSweep(g.dir, g.index);
     buzz([10, 30, 10]);
     beep("wind");
+    gustCueHold = true;
+    setTimeout(function () { gustCueHold = false; renderWindWarning(); }, 320);
     await sleep(160);
     renderBoard();
     const mt = boardMetrics();
     const step = mt.stride + mt.gap;
-    boardEl.style.setProperty("--sx", (g.dc * 4) + "px");
-    boardEl.style.setProperty("--sy", (g.dr * 4) + "px");
-    boardEl.classList.remove("windshake"); void boardEl.offsetWidth; boardEl.classList.add("windshake");
+    const shake = reducedMotion() ? 0 : 7;
+    boardEl.style.setProperty("--sx", (g.dc * shake) + "px");
+    boardEl.style.setProperty("--sy", (g.dr * shake) + "px");
+    if (shake) {
+      boardEl.classList.remove("windshake"); void boardEl.offsetWidth; boardEl.classList.add("windshake");
+    }
     for (let i = 0; i < g.moves.length; i++) {
       const to = g.moves[i].to;
       const el = cellEls[to.r][to.c];
@@ -5577,6 +5827,126 @@
     return g;
   }
 
+  let valleyCloseGen = 0;
+  function boardKindCounts() {
+    let empty = 0, vines = 0, trapped = 0, stones = 0;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const v = board[r][c];
+        if (!v) empty++;
+        else if (L.isStone(v)) stones++;
+        else if (v.trapped) trapped++;
+        else if (L.isVine(v)) vines++;
+      }
+    }
+    return { empty: empty, vines: vines, trapped: trapped, stones: stones };
+  }
+  function isValleyClosed() {
+    const k = boardKindCounts();
+    return k.vines >= 2 && k.trapped >= 6;
+  }
+  function holeVineSvg(r, c) {
+    const seed = (r * 8 + c) % 4;
+    const paths = [
+      "M2 20 C 6 16, 7 8, 14 7 C 18 6, 20 12, 16 14",
+      "M22 4 C 16 6, 10 5, 8 12 C 6 18, 14 20, 16 16",
+      "M4 4 C 8 8, 6 16, 13 18 C 18 20, 21 14, 17 12",
+      "M20 20 C 16 16, 18 8, 11 7 C 6 6, 4 13, 8 15"
+    ];
+    const leaves = [
+      vineLeaf(14, 8, 20, 0.75) + vineLeaf(7, 16, -80, 0.7),
+      vineLeaf(10, 8, -20, 0.75) + vineLeaf(16, 16, 110, 0.7),
+      vineLeaf(12, 16, 200, 0.75) + vineLeaf(7, 8, -40, 0.7),
+      vineLeaf(12, 8, 30, 0.75) + vineLeaf(8, 16, -120, 0.7)
+    ];
+    return '<svg class="holevine" viewBox="0 0 24 24" aria-hidden="true">' +
+      vineStem(paths[seed], 1.55) + leaves[seed] + "</svg>";
+  }
+  function clearValleyClose() {
+    valleyCloseGen++;
+    if (cellEls && cellEls.length) {
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const el = cellEls[r] && cellEls[r][c];
+          if (!el) continue;
+          el.classList.remove("dead-hole");
+          const hv = el.querySelector(".holevine");
+          if (hv) hv.remove();
+        }
+      }
+    }
+  }
+  function playValleyClose(then) {
+    const gen = ++valleyCloseGen;
+    const quiet = reducedMotion();
+    if (cellEls && cellEls.length) {
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (board[r][c]) continue;
+          const el = cellEls[r] && cellEls[r][c];
+          if (!el) continue;
+          el.classList.add("dead-hole");
+          if (!el.querySelector(".holevine")) el.insertAdjacentHTML("beforeend", holeVineSvg(r, c));
+        }
+      }
+    }
+    try { Snd.vine(); } catch (e) {}
+    function finish() {
+      if (gen !== valleyCloseGen) return;
+      valleyCloseGen++;
+      document.removeEventListener("pointerdown", finish, true);
+      if (typeof then === "function") then();
+    }
+    document.addEventListener("pointerdown", finish, true);
+    setTimeout(finish, quiet ? 280 : 900);
+  }
+  function showOverModal(valley) {
+    const isNew = recordJustBeaten || score > bestAtStart;
+    const tied = !isNew && bestAtStart > 0 && score === bestAtStart;
+    const falta = bestAtStart - score;
+    const close = !isNew && bestAtStart > 0 && falta > 0 && falta / bestAtStart <= 0.15;
+    let body = "";
+    if (isNew) {
+      body =
+        '<div class="modal record-win">' +
+          "<h2>¡Nuevo récord!</h2>" +
+          (valley ? '<p class="valley-line">La enredadera cerró el valle</p>' : "") +
+          '<div class="bigscore">' + score + " puntos</div>" +
+          (bestAtStart > 0
+            ? '<div class="bestline">Has superado tu marca de ' + bestAtStart + "</div>"
+            : '<div class="bestline">Tu primera marca</div>');
+    } else {
+      let mid = "";
+      if (tied) {
+        mid = '<p class="faltan">Has igualado tu récord</p>';
+      } else if (bestAtStart > 0 && falta > 0) {
+        mid =
+          '<p class="faltan' + (close ? " porpoco" : "") + '">' +
+          (close ? "¡Por poco! " : "") +
+          (falta === 1 ? "Te faltó 1 punto" : ("Te faltaron " + falta)) +
+          " para tu récord</p>" +
+          '<div class="goalbar"><i style="width:' + Math.max(2, Math.min(100, Math.round(100 * score / bestAtStart))) + '%"></i></div>';
+      }
+      body =
+        '<div class="modal">' +
+          (valley
+            ? '<h2 class="valley-title">La enredadera cerró el valle</h2><p>No cabe ninguna pieza</p>'
+            : "<h2>Fin de la partida</h2><p>No cabe ninguna pieza</p>") +
+          '<div class="bigscore">' + score + " puntos</div>" +
+          mid +
+          '<div class="bestline">Mejor: ' + best + "</div>";
+    }
+    overlayEl.innerHTML =
+      body +
+        '<div class="confirm-row">' +
+          '<button type="button" class="ghost" id="btnToMenu">Menú</button>' +
+          '<button type="button" id="btnAgain">Jugar de nuevo</button>' +
+        "</div>" +
+      "</div>";
+    overlayEl.classList.remove("hidden");
+    document.getElementById("btnAgain").addEventListener("click", newGame);
+    document.getElementById("btnToMenu").addEventListener("click", goMenu);
+  }
   function endGame() {
     if (over || won) return;
     over = true;
@@ -5602,49 +5972,9 @@
       document.getElementById("btnRetry").addEventListener("click", function () { startLevel(lv.id); });
       return;
     }
-    const isNew = recordJustBeaten || score > bestAtStart;
-    const tied = !isNew && bestAtStart > 0 && score === bestAtStart;
-    const falta = bestAtStart - score;
-    const close = !isNew && bestAtStart > 0 && falta > 0 && falta / bestAtStart <= 0.15;
-    let body = "";
-    if (isNew) {
-      body =
-        '<div class="modal record-win">' +
-          "<h2>¡Nuevo récord!</h2>" +
-          '<div class="bigscore">' + score + " puntos</div>" +
-          (bestAtStart > 0
-            ? '<div class="bestline">Has superado tu marca de ' + bestAtStart + "</div>"
-            : '<div class="bestline">Tu primera marca</div>');
-    } else {
-      let mid = "";
-      if (tied) {
-        mid = '<p class="faltan">Has igualado tu récord</p>';
-      } else if (bestAtStart > 0 && falta > 0) {
-        mid =
-          '<p class="faltan' + (close ? " porpoco" : "") + '">' +
-          (close ? "¡Por poco! " : "") +
-          (falta === 1 ? "Te faltó 1 punto" : ("Te faltaron " + falta)) +
-          " para tu récord</p>" +
-          '<div class="goalbar"><i style="width:' + Math.max(2, Math.min(100, Math.round(100 * score / bestAtStart))) + '%"></i></div>';
-      }
-      body =
-        '<div class="modal">' +
-          "<h2>Fin de la partida</h2>" +
-          "<p>No cabe ninguna pieza</p>" +
-          '<div class="bigscore">' + score + " puntos</div>" +
-          mid +
-          '<div class="bestline">Mejor: ' + best + "</div>";
-    }
-    overlayEl.innerHTML =
-      body +
-        '<div class="confirm-row">' +
-          '<button type="button" class="ghost" id="btnToMenu">Menú</button>' +
-          '<button type="button" id="btnAgain">Jugar de nuevo</button>' +
-        "</div>" +
-      "</div>";
-    overlayEl.classList.remove("hidden");
-    document.getElementById("btnAgain").addEventListener("click", newGame);
-    document.getElementById("btnToMenu").addEventListener("click", goMenu);
+    const valley = isValleyClosed();
+    if (valley) playValleyClose(function () { showOverModal(true); });
+    else showOverModal(false);
   }
 
   async function maybeWin() {
@@ -6053,6 +6383,9 @@
     getGustCount: function () { return gustCount; },
     getWindState: function () { return windState; },
     endGame: endGame,
+    isValleyClosed: isValleyClosed,
+    hudSafeBottom: hudSafeBottom,
+    syncHudSafe: syncHudSafe,
     showMenu: goMenu,
     startInfinite: startInfinite,
     startLevel: startLevel,
@@ -6084,6 +6417,16 @@
     trySalvado: function () { return trySalvado(); },
     vineSpreadPeriod: function () { return vineSpreadPeriod(); },
     vineCellCap: function () { return vineCellCap(); },
+    rainSpeed: function () { return weatherRainSpeed(); },
+    rainInfo: function () {
+      return {
+        on: !!weather.on,
+        cycle: weather.cycle,
+        speed: weatherRainSpeed(),
+        drops: weather.drops.length,
+        reduced: reducedMotion()
+      };
+    },
     vineTicks: function (r, c) {
       const v = board[r] && board[r][c];
       return v && v.vineTicks != null ? v.vineTicks : null;
