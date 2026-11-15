@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v51 estrella gorda -->
+<!-- figuras v52 tacto -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -524,7 +524,8 @@
     z-index: 2;
   }
   .cell.lineflash {
-    animation: lineflash .32s ease-out forwards;
+    animation: lineflash .2s ease-out forwards;
+    animation-delay: var(--d, 0ms);
     z-index: 2;
   }
   @keyframes pop {
@@ -727,6 +728,50 @@
     filter: drop-shadow(0 10px 14px rgba(0,0,0,.35));
     will-change: transform;
     contain: layout style;
+  }
+  /* v52 tacto: la pieza levantada crece a tamaño de tablero y flota por encima del dedo */
+  #dragLayer .lift {
+    position: absolute;
+    left: 0; top: 0;
+    will-change: transform;
+    pointer-events: none;
+  }
+  #dragLayer .lift .mini {
+    filter: drop-shadow(0 12px 16px rgba(0,0,0,.42)) drop-shadow(0 3px 4px rgba(0,0,0,.28));
+    transform-origin: var(--ox, 50%) var(--oy, 50%);
+  }
+  .slot.pressing .mini { transform: scale(1.08); transition: transform .09s ease-out; }
+  /* v52 tacto: banda de luz sobre cada fila/columna que se va a romper antes de soltar */
+  .line-glow {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 7px;
+    border: 2.5px solid rgba(255, 252, 228, .96);
+    box-shadow:
+      0 0 14px 4px rgba(255, 224, 120, .70),
+      0 0 3px 1px rgba(255, 255, 255, .85),
+      inset 0 0 12px 2px rgba(255, 236, 160, .55);
+    background: rgba(255, 240, 180, .10);
+    z-index: 4;
+    animation: lineGlowIn .14s ease-out both, lineGlowPulse .8s ease-in-out .14s infinite;
+  }
+  @keyframes lineGlowIn {
+    0% { opacity: 0; transform: scale(.96); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes lineGlowPulse {
+    0%, 100% { opacity: .82; }
+    50% { opacity: 1; }
+  }
+  #burstCanvas {
+    position: fixed;
+    left: 0; top: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 45;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .line-glow { animation: none; opacity: 1; }
   }
   img.sym {
     pointer-events: none;
@@ -1323,7 +1368,7 @@
   }
   .cell.burst.burstline::after {
     background: radial-gradient(circle, #fff 0%, rgba(255,240,170,.85) 50%, rgba(255,220,120,0) 85%);
-    animation-duration: .36s;
+    animation-duration: .2s;
   }
   @keyframes cellglow {
     0% { opacity: 0; transform: scale(.4); }
@@ -2348,6 +2393,7 @@
       </div>
     </div>
   </div>
+  <canvas id="burstCanvas" aria-hidden="true"></canvas>
   <div id="dragLayer"></div>
   <div id="overlay" class="hidden" role="dialog" aria-modal="true"></div>
 
@@ -3725,8 +3771,34 @@
     mark(m.stoneCells, "stone");
     mark(m.vineCells, "vine");
     mark(m.trappedCells, "vine");
+    // v52: qué filas/columnas se romperían (para la banda de luz antes de soltar)
+    try { Object.defineProperty(map, "_lines", { value: { rows: (l.lines && l.lines.rows || []).slice(), cols: (l.lines && l.lines.cols || []).slice() }, enumerable: false }); } catch (e) {}
     return map;
   }
+
+  // ---- v52 tacto: banda de luz por línea antes de soltar ----
+  let lineGlowKey = "";
+  function showLineGlow(lines) {
+    const rows = lines ? lines.rows : [];
+    const cols = lines ? lines.cols : [];
+    const key = rows.join(",") + "|" + cols.join(",");
+    if (key === lineGlowKey) return;
+    lineGlowKey = key;
+    fxEl.querySelectorAll(".line-glow").forEach(function (n) { n.remove(); });
+    if (!rows.length && !cols.length) return;
+    const wr = fxBox();
+    function band(a, z, isRow, idx) {
+      const el = document.createElement("div");
+      el.className = "line-glow " + (isRow ? "row" : "col");
+      el.dataset.idx = String(idx);
+      el.style.left = (a.x - 3) + "px"; el.style.top = (a.y - 3) + "px";
+      el.style.width = (z.x + z.w - a.x + 6) + "px"; el.style.height = (z.y + z.h - a.y + 6) + "px";
+      fxEl.appendChild(el);
+    }
+    rows.forEach(function (r) { band(cellBox(r, 0, wr), cellBox(r, 7, wr), true, r); });
+    cols.forEach(function (c) { band(cellBox(0, c, wr), cellBox(7, c, wr), false, c); });
+  }
+  function clearLineGlow() { showLineGlow(null); }
 
   function renderBoard(previewCells, previewOk, clearHint) {
     syncVineMeta();
@@ -4227,10 +4299,12 @@
       unlock: unlock,
       hasContext: function () { return !!ctx; },
       ctxState: function () { return ctx ? ctx.state : (failed ? "failed" : "none"); },
+      // v52 tacto: "toc" corto de madera al colocar
       place: function () {
         const c = ready(); if (!c) return; const t = c.currentTime + 0.005;
-        tone(c, t, 880, "sine", 0.06, 0.12, { glide: 0.45, glideT: 0.05 });
-        noise(c, t, 0.04, 0.05, "highpass", 3000);
+        tone(c, t, 310, "sine", 0.07, 0.2, { glide: 0.62, glideT: 0.035, att: 0.002 });
+        tone(c, t, 760, "triangle", 0.03, 0.06, { glide: 0.8, att: 0.002 });
+        noise(c, t, 0.035, 0.09, "bandpass", 1300, 700, 4);
       },
       // grupo: arpegio ascendente, una nota por figura; más grande = más agudo
       group: function (symbol, n, stagger) {
@@ -4254,17 +4328,41 @@
         noise(c, t, 0.12, 0.09, "bandpass", 2600, 1400, 2);
         noise(c, t + 0.07, 0.12, 0.07, "bandpass", 3200, 1800, 2);
       },
-      line: function (nLines) {
+      // v52 tacto: "pop" corto y suave de madera/plástico al coger una pieza
+      pick: function () {
+        const c = ready(); if (!c) return; const t = c.currentTime + 0.004;
+        tone(c, t, 520, "sine", 0.07, 0.13, { glide: 0.55, glideT: 0.04, att: 0.003 });
+        tone(c, t, 1240, "triangle", 0.035, 0.035, { glide: 0.7, att: 0.002 });
+        noise(c, t, 0.025, 0.05, "bandpass", 1900, 1100, 3);
+      },
+      // líneas (v52 tacto): cada casilla que se va del barrido suena una nota más aguda
+      // (escalita mayor tipo piano, sincronizada con delaysMs). Con cada jugada seguida que
+      // rompe línea (step 0, 1, 2…) toda la escala empieza un grado más arriba; varias
+      // líneas a la vez rematan con un pequeño arpegio ascendente.
+      line: function (nLines, step, delaysMs) {
         const c = ready(); if (!c) return; const t = c.currentTime + 0.01;
         const big = nLines >= 2;
-        const root = big ? 587.33 : 523.25;
-        const chord = [1, 1.26, 1.5, 2].concat(big ? [2.52, 3] : []);
-        for (let i = 0; i < chord.length; i++) {
-          tone(c, t + i * 0.035, root * chord[i], "sawtooth", big ? 0.7 : 0.55, 0.05, { lp: 900, lpTo: 4200, att: 0.02 });
-          tone(c, t + i * 0.035, root * chord[i], "triangle", big ? 0.7 : 0.55, 0.06, { att: 0.01 });
+        const MAJOR = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24];
+        const start = Math.max(0, Math.min(5, step | 0));
+        const d = (delaysMs && delaysMs.length) ? delaysMs : [0, 26, 52, 78, 104, 130, 156, 182];
+        function key(tt, f, dur, vol) {
+          tone(c, tt, f, "triangle", dur, vol, { att: 0.003 });
+          tone(c, tt, f * 2, "sine", dur * 0.6, vol * 0.3, { att: 0.002 });
+          tone(c, tt, f * 3, "sine", dur * 0.3, vol * 0.1, { att: 0.002 });
         }
-        noise(c, t, big ? 0.55 : 0.42, big ? 0.22 : 0.16, "bandpass", 400, 3800, 0.8);
-        tone(c, t, 130, "sine", 0.3, big ? 0.35 : 0.25, { glide: 0.5 });
+        let last = 0, lastSemi = 0;
+        for (let i = 0; i < d.length && i < 8; i++) {
+          const semi = MAJOR[start + i];
+          key(t + d[i] / 1000, 523.25 * Math.pow(SEMI, semi), 0.22 + (i === d.length - 1 ? 0.25 : 0), 0.11);
+          last = d[i] / 1000; lastSemi = semi;
+        }
+        if (big) {
+          const top = 523.25 * Math.pow(SEMI, lastSemi);
+          const ARP = nLines >= 3 ? [0, 4, 7, 12] : [0, 4, 7];
+          for (let i = 0; i < ARP.length; i++) key(t + last + 0.06 + i * 0.05, top * Math.pow(SEMI, ARP[i]) / 2, 0.45, 0.09);
+        }
+        noise(c, t, big ? 0.45 : 0.32, big ? 0.14 : 0.09, "bandpass", 400, 3800, 0.8);
+        tone(c, t, 130, "sine", 0.3, big ? 0.3 : 0.2, { glide: 0.5 });
       },
       combo: function (k) {
         const c = ready(); if (!c) return; const t = c.currentTime + 0.02;
@@ -4329,7 +4427,7 @@
     return a;
   }
   // figura que se infla, se aplasta y sale volando con chispas de su color
-  function flyFigure(b, symbol, delay, ox, oy, nShards) {
+  function flyFigure(b, symbol, delay, ox, oy, nShards, durMs) {
     const color = COLOR[symbol] || "#fff";
     const el = document.createElement("div");
     el.className = "flyer";
@@ -4348,7 +4446,7 @@
       { transform: "translate(0px,-8px) scale(0.86,1.22) rotate(0deg)", opacity: 1, offset: 0.3 },
       { transform: "translate(" + (dx * 0.55).toFixed(1) + "px," + peak.toFixed(1) + "px) scale(1.05,1.05) rotate(" + (rot * 0.5).toFixed(0) + "deg)", opacity: 1, offset: 0.62 },
       { transform: "translate(" + dx.toFixed(1) + "px," + endY.toFixed(1) + "px) scale(0.55,0.55) rotate(" + rot.toFixed(0) + "deg)", opacity: 0 }
-    ], { duration: 380, delay: delay, easing: "linear", fill: "both" });
+    ], { duration: durMs || 380, delay: delay, easing: "linear", fill: "both" });
     const kind = symbol === "star" ? " starry" : symbol === "circle" ? " round" : "";
     for (let i = 0; i < nShards; i++) {
       const sh = document.createElement("div");
@@ -4505,6 +4603,153 @@
     return maxDelay;
   }
 
+  // ---- v52 tacto: estallido de partículas (canvas) que crece con las líneas rotas a la vez ----
+  const burst = { cv: null, ctx: null, parts: [], raf: 0, last: 0, dpr: 1, peak: 0, total: 0 };
+  const BURST_MAX = 240;
+  function burstCanvas() {
+    if (burst.cv) return burst.cv;
+    burst.cv = document.getElementById("burstCanvas");
+    if (burst.cv) burst.ctx = burst.cv.getContext("2d");
+    return burst.cv;
+  }
+  function burstResize() {
+    const cv = burstCanvas();
+    if (!cv) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(window.innerWidth * dpr), h = Math.round(window.innerHeight * dpr);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    burst.dpr = dpr;
+  }
+  function burstTier(nLines) {
+    // 1 línea sutil · 2 más · 3+ grande
+    if (nLines >= 3) return { per: 9, cap: BURST_MAX, sp: [150, 420], sz: [3, 7], life: [0.65, 1.15], ring: 26 };
+    if (nLines === 2) return { per: 5, cap: 130, sp: [110, 300], sz: [2.5, 5.5], life: [0.5, 0.95], ring: 0 };
+    return { per: 2, cap: 40, sp: [70, 180], sz: [2, 4], life: [0.4, 0.7], ring: 0 };
+  }
+  function burstLines(l) {
+    if (!burstCanvas() || !burst.ctx) return 0;
+    burstResize();
+    const n = Math.max(1, l.nLines || 1);
+    const t = burstTier(n);
+    const quiet = reducedMotion();
+    const cells = l.lineCells || [];
+    if (!cells.length) return 0;
+    const lines = l.lines || { rows: [], cols: [] };
+    const pos = Object.create(null);
+    lines.rows.forEach(function (r) { for (let c = 0; c < 8; c++) { const k = r + "," + c; pos[k] = Math.min(pos[k] == null ? 99 : pos[k], c); } });
+    lines.cols.forEach(function (c) { for (let r = 0; r < 8; r++) { const k = r + "," + c; pos[k] = Math.min(pos[k] == null ? 99 : pos[k], r); } });
+    let budget = Math.min(t.cap, BURST_MAX - burst.parts.length);
+    if (quiet) budget = Math.floor(budget / 3);
+    if (budget <= 0) return 0;
+    const per = Math.max(1, Math.min(t.per, Math.floor(budget / cells.length) || 1));
+    let made = 0, sx = 0, sy = 0;
+    const cols = [];
+    for (let i = 0; i < cells.length && made < budget; i++) {
+      const p = cells[i];
+      const v = board[p.r][p.c];
+      const el = cellEls[p.r][p.c];
+      if (!el) continue;
+      const br = el.getBoundingClientRect();
+      const cx = br.left + br.width / 2, cy = br.top + br.height / 2;
+      sx += cx; sy += cy;
+      let color = "#fff2c0";
+      if (v && v.symbol === L.STONE) color = "#c9d0d8";
+      else if (v && v.symbol === L.VINE) color = "#5fd27a";
+      else if (v && v.symbol) color = COLOR[v.symbol] || v.color || color;
+      cols.push(color);
+      const delay = lineCellDelay(pos[p.r + "," + p.c] || 0) / 1000;
+      for (let j = 0; j < per && made < budget; j++, made++) {
+        const ang = rnd(0, Math.PI * 2);
+        const sp = rnd(t.sp[0], t.sp[1]) * (quiet ? 0.5 : 1);
+        const life = rnd(t.life[0], t.life[1]);
+        burst.parts.push({
+          x: cx + rnd(-br.width * 0.3, br.width * 0.3), y: cy + rnd(-br.height * 0.3, br.height * 0.3),
+          vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - rnd(30, 90),
+          s: rnd(t.sz[0], t.sz[1]), c: color, age: -delay, life: life,
+          glint: Math.random() < 0.18
+        });
+      }
+    }
+    // 3+: anillo grande desde el centro de lo roto
+    if (t.ring && !quiet && cols.length) {
+      const ox = sx / Math.max(1, cols.length), oy = sy / Math.max(1, cols.length);
+      for (let j = 0; j < t.ring && burst.parts.length < BURST_MAX; j++, made++) {
+        const ang = (j / t.ring) * Math.PI * 2 + rnd(-0.08, 0.08);
+        const sp = rnd(320, 460);
+        burst.parts.push({ x: ox, y: oy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, s: rnd(4, 7), c: cols[j % cols.length], age: -0.1, life: rnd(0.7, 1.0), glint: true });
+      }
+    }
+    burst.total += made;
+    if (burst.parts.length > burst.peak) burst.peak = burst.parts.length;
+    if (!burst.raf) { burst.last = performance.now(); burst.raf = requestAnimationFrame(burstTick); }
+    return made;
+  }
+  function burstTick(now) {
+    const ctx = burst.ctx;
+    const dt = Math.min(0.05, Math.max(0, (now - burst.last) / 1000));
+    burst.last = now;
+    const dpr = burst.dpr;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, burst.cv.width, burst.cv.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const parts = burst.parts;
+    let w = 0;
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      p.age += dt;
+      if (p.age >= p.life) continue;
+      parts[w++] = p;
+      if (p.age < 0) continue;
+      const drg = p.drag || 0.985;
+      p.vx *= drg; p.vy = p.vy * drg + (p.g == null ? 620 : p.g) * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      const k = 1 - p.age / p.life;
+      const sz = p.s * (0.45 + 0.55 * k);
+      ctx.globalAlpha = Math.min(1, k * 1.6);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(p.x - sz / 2, p.y - sz / 2, sz, sz);
+      if (p.glint && k > 0.45) {
+        ctx.globalAlpha = (k - 0.45) * 1.4;
+        ctx.fillStyle = "#fffbe8";
+        ctx.fillRect(p.x - sz / 4, p.y - sz / 4, sz / 2, sz / 2);
+      }
+    }
+    parts.length = w;
+    ctx.globalAlpha = 1;
+    if (w) burst.raf = requestAnimationFrame(burstTick);
+    else { burst.raf = 0; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, burst.cv.width, burst.cv.height); }
+  }
+  // v52 tacto: mini estallido de chispitas del color de la pieza al tocarla/cogerla
+  function pickSparks(x, y, piece) {
+    if (!burstCanvas() || !burst.ctx || !piece || !piece.cells) return 0;
+    burstResize();
+    const quiet = reducedMotion();
+    const n = quiet ? 3 : 5 + Math.floor(Math.random() * 4);
+    const room = BURST_MAX - burst.parts.length;
+    const k = Math.min(n, room);
+    const off = rnd(0, Math.PI * 2);
+    for (let i = 0; i < k; i++) {
+      const sym = piece.cells[i % piece.cells.length].symbol;
+      const ang = off + (i / k) * Math.PI * 2 + rnd(-0.25, 0.25);
+      const sp = rnd(140, 230) * (quiet ? 0.5 : 1);
+      burst.parts.push({ x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, s: rnd(2.5, 4), c: COLOR[sym] || "#fff2c0", age: 0, life: rnd(0.28, 0.42), glint: i % 3 === 0, g: 0, drag: 0.9 });
+    }
+    burst.total += k;
+    burst.sparks = (burst.sparks || 0) + k;
+    if (burst.parts.length > burst.peak) burst.peak = burst.parts.length;
+    if (!burst.raf) { burst.last = performance.now(); burst.raf = requestAnimationFrame(burstTick); }
+    return k;
+  }
+  function clearBurst() {
+    burst.parts.length = 0;
+    if (burst.raf) { cancelAnimationFrame(burst.raf); burst.raf = 0; }
+    if (burst.ctx && burst.cv) { burst.ctx.setTransform(1, 0, 0, 1, 0, 0); burst.ctx.clearRect(0, 0, burst.cv.width, burst.cv.height); }
+  }
+
+  // v52 tacto: barrido rápido casilla a casilla a lo largo de la línea (todo < 0,4 s)
+  const LINE_STEP_MS = 26, LINE_T0_MS = 20, LINE_FLY_MS = 190;
+  function lineCellDelay(pos) { return LINE_T0_MS + pos * LINE_STEP_MS; }
+
   // Líneas: barrido brillante, todas las casillas saltan y el tablero tiembla
   function fxLines(l, trappedSet) {
     const wr = fxBox();
@@ -4520,28 +4765,34 @@
       const v = board[p.r][p.c];
       const b = cellBox(p.r, p.c, wr);
       sx += b.cx; sy += b.cy;
-      const delay = 30 + (pos[k] || 0) * 22;
+      const delay = lineCellDelay(pos[k] || 0);
       const el = cellEls[p.r][p.c];
       if (trappedSet[k]) { el.classList.add("freed"); chunks(b, "vine", delay, 3); }
-      else if (v && v.symbol === L.STONE) { el.classList.add("lineflash"); chunks(b, "stone", delay, 4); }
-      else if (v && v.symbol === L.VINE) { el.classList.add("lineflash"); chunks(b, "vine", delay, 4); }
+      else if (v && v.symbol === L.STONE) { el.style.setProperty("--d", delay + "ms"); el.classList.add("lineflash"); chunks(b, "stone", delay, 4); }
+      else if (v && v.symbol === L.VINE) { el.style.setProperty("--d", delay + "ms"); el.classList.add("lineflash"); chunks(b, "vine", delay, 4); }
       else if (v) {
         el.style.setProperty("--d", delay + "ms");
         el.classList.add("burst", "burstline");
-        flyFigure(b, v.symbol, delay, b.cx, b.cy + 30, nShards);
+        flyFigure(b, v.symbol, delay, b.cx, b.cy + 30, nShards, LINE_FLY_MS);
       }
     }
     lines.rows.forEach(function (r, i) { sweepLine(true, r, wr, i * 40); });
     lines.cols.forEach(function (c, i) { sweepLine(false, c, wr, (lines.rows.length + i) * 40); });
+    burstLines(l);
     shakeBoard(l.nLines >= 2 ? 7 : 4);
-    Snd.line(l.nLines);
+    const seen = Object.create(null), delays = [];
+    Object.keys(pos).forEach(function (k) { const d = lineCellDelay(pos[k]); if (!seen[d]) { seen[d] = 1; delays.push(d); } });
+    delays.sort(function (a, b) { return a - b; });
+    Snd.line(l.nLines, Math.max(0, lineStreak - 1), delays);
     buzz(l.nLines >= 2 ? [30, 30, 40] : 30);
     const n = l.lineCells.length || 1;
     popPoints(sx / n, sy / n, l.pts, "line", 60);
   }
 
+  let lineStreak = 0; // v52 tacto: jugadas seguidas que rompen línea (sube la nota)
   function newGame() {
     board = L.makeBoard();
+    lineStreak = 0;
     tray = L.generateTrio();
     score = 0;
     locked = false;
@@ -4561,6 +4812,8 @@
     bannerQueue.length = 0;
     drag = null;
     dragLayer.innerHTML = "";
+    clearLineGlow();
+    clearBurst();
     overlayEl.classList.add("hidden");
     overlayEl.innerHTML = "";
     clearValleyClose();
@@ -6101,6 +6354,7 @@
     const events = m.groups.length + nLines;
     if (events >= 2) popCombo(events);   // combo: varias explosiones en una jugada
     const brokenStones = (m.stoneCells || []).slice();
+    lineStreak = lineCells.length ? lineStreak + 1 : 0;
     if (lineCells.length) {
       const lineTrapped = Object.create(null);
       l.trappedCells.forEach(function (p) { lineTrapped[p.r + "," + p.c] = 1; });
@@ -6181,19 +6435,30 @@
     return Math.max(16, m.stride);
   }
 
-  function liftPx() {
-    return Math.max(64, Math.round(window.innerHeight * 0.12));
+  // v52 tacto: con el dedo, la pieza entera queda por encima del punto de toque
+  // (su borde inferior a ~1 casilla del dedo); con ratón, la casilla cogida bajo el cursor.
+  function liftGapPx(info) {
+    if (info && info.pointerType === "mouse") return null;
+    return Math.max(28, Math.round(info.cellPx * 1.1));
   }
-
+  function liftedTopLeft(info, x, y) {
+    const size = info.cellPx;
+    const gap = Math.max(2, Math.round(size * 0.1));
+    const b = info.bounds || pieceBounds(info.piece);
+    const gx = x - info.anchorC * (size + gap) - size / 2;
+    const above = liftGapPx(info);
+    let gy;
+    if (above == null) gy = y - info.anchorR * (size + gap) - size / 2;
+    else gy = y - above - (b.rows * size + (b.rows - 1) * gap);
+    return { gx: gx, gy: gy, size: size, gap: gap };
+  }
   function placeGhost(x, y) {
     if (!drag || !drag.ghost) return;
-    const size = drag.cellPx;
-    const gap = Math.max(2, Math.round(size * 0.1));
-    const gx = x - drag.anchorC * (size + gap) - size / 2;
-    const gy = y - liftPx() - drag.anchorR * (size + gap) - size / 2;
-    drag.ghost.style.transform = "translate(" + gx + "px," + gy + "px)";
-    drag.originX = gx + size / 2;
-    drag.originY = gy + size / 2;
+    const t = liftedTopLeft(drag, x, y);
+    drag.ghost.style.transform = "translate(" + t.gx + "px," + t.gy + "px)";
+    drag.originX = t.gx + t.size / 2;
+    drag.originY = t.gy + t.size / 2;
+    drag.lastX = x; drag.lastY = y;
   }
 
   function updatePreview() {
@@ -6205,10 +6470,11 @@
     const posKey = at.r + "," + at.c + "," + (anyOn ? 1 : 0) + "," + drag.index;
     if (posKey === drag.posKey) return;
     drag.posKey = posKey;
-    if (!anyOn) { renderBoard(); drag.target = null; return; }
+    if (!anyOn) { renderBoard(); clearLineGlow(); drag.target = null; return; }
     const ok = L.canPlace(board, piece, at.r, at.c);
     const hint = ok ? computeClearHint(piece, at.r, at.c) : null;
     renderBoard(cells, ok, hint);
+    showLineGlow(hint && hint._lines);
     drag.target = ok ? at : { r: at.r, c: at.c, bad: true };
   }
 
@@ -6228,15 +6494,15 @@
     const slot = info.slot && info.slot.isConnected ? info.slot : trayEl.querySelector('.slot[data-i="' + info.index + '"]');
     const piece = info.piece;
     const size = dragCellPx();
-    const ghost = renderMini(piece, size);
-    ghost.style.position = "absolute";
-    ghost.style.left = "0";
-    ghost.style.top = "0";
-    ghost.style.willChange = "transform";
-    ghost.style.pointerEvents = "none";
+    const mini = renderMini(piece, size);
+    const ghost = document.createElement("div");
+    ghost.className = "lift";
+    ghost.appendChild(mini);
     dragLayer.innerHTML = "";
     dragLayer.appendChild(ghost);
     const b = pieceBounds(piece);
+    const trayMini = slot && slot.querySelector(".mini");
+    const trayCell = trayMini && trayMini.firstElementChild ? trayMini.firstElementChild.getBoundingClientRect().width : size * 0.55;
     // grab the nearest cell of the piece in tray space
     const slotRect = slot ? slot.getBoundingClientRect() : { left: pt.x, top: pt.y, width: 1, height: 1 };
     const localX = pt.x - slotRect.left;
@@ -6253,11 +6519,27 @@
     }
     info.ghost = ghost;
     info.cellPx = size;
+    info.bounds = b;
     info.anchorR = anchorR;
     info.anchorC = anchorC;
     info.moved = true;
-    if (slot) slot.classList.add("dragging");
+    if (slot) { slot.classList.remove("pressing"); slot.classList.add("dragging"); }
     placeGhost(pt.x, pt.y);
+    // crece desde el tamaño de la bandeja y sube desde el dedo (animación corta)
+    const t = liftedTopLeft(info, pt.x, pt.y);
+    const ax = anchorC * (t.size + t.gap) + t.size / 2;
+    const ay = anchorR * (t.size + t.gap) + t.size / 2;
+    mini.style.setProperty("--ox", ax + "px");
+    mini.style.setProperty("--oy", ay + "px");
+    const s0 = Math.max(0.35, Math.min(1, trayCell / size));
+    const dy0 = pt.y - (t.gy + ay);
+    if (mini.animate && !reducedMotion()) {
+      mini.animate([
+        { transform: "translate(0px," + dy0.toFixed(1) + "px) scale(" + s0.toFixed(3) + ")" },
+        { transform: "translate(0px,0px) scale(1)" }
+      ], { duration: 130, easing: "cubic-bezier(.2,.8,.3,1.15)" });
+    }
+    buzz(8);
     updatePreview();
   }
 
@@ -6282,8 +6564,12 @@
       startX: pt.x,
       startY: pt.y,
       moved: false,
-      slot: slot
+      slot: slot,
+      pointerType: e.pointerType || "touch"
     };
+    slot.classList.add("pressing");
+    pickSparks(pt.x, pt.y, piece);
+    try { Snd.pick(); } catch (err) {}
   }
 
   function onMove(e) {
@@ -6307,6 +6593,7 @@
     if (e && e.pointerId != null && drag.pointerId != null && e.pointerId !== drag.pointerId) return;
     if (e) e.preventDefault();
     const info = drag;
+    if (info.slot) info.slot.classList.remove("pressing");
     if (!info.moved) {
       drag = null;
       if (!cancelled) rotateTrayPiece(info.index, info.slot);
@@ -6315,6 +6602,7 @@
     cancelPreview();
     drag = null;
     dragLayer.innerHTML = "";
+    clearLineGlow();
     renderBoard();
     const slot = trayEl.querySelector('.slot[data-i="' + info.index + '"]');
     if (slot) slot.classList.remove("dragging");
@@ -6454,7 +6742,25 @@
       renderBoard();
       return spreads;
     },
-    playVineSpreads: function (spreads) { return playVineSpreads(spreads); }
+    playVineSpreads: function (spreads) { return playVineSpreads(spreads); },
+    // v52 tacto: lectura para pruebas
+    fxStats: function () { return { particles: burst.parts.length, peak: burst.peak, total: burst.total, sparks: burst.sparks || 0, running: !!burst.raf, lineGlows: fxEl.querySelectorAll(".line-glow").length }; },
+    resetFxStats: function () { burst.peak = 0; burst.total = 0; burst.sparks = 0; },
+    getLineStreak: function () { return lineStreak; },
+    burstTier: burstTier,
+    dragInfo: function () {
+      if (!drag || !drag.ghost) return null;
+      const r = drag.ghost.querySelector(".mini").getBoundingClientRect();
+      return { x: drag.lastX, y: drag.lastY, pointerType: drag.pointerType, cellPx: drag.cellPx, top: r.top, bottom: r.bottom, left: r.left, right: r.right, target: drag.target, anchorR: drag.anchorR, anchorC: drag.anchorC };
+    },
+    // punto del dedo que deja la casilla (0,0) de la pieza sobre la casilla (r,c) del tablero
+    fingerFor: function (r, c) {
+      if (!drag || !drag.ghost) return null;
+      const cb = cellEls[r][c].getBoundingClientRect();
+      const t0 = liftedTopLeft(drag, 0, 0);
+      const ox = t0.gx + t0.size / 2, oy = t0.gy + t0.size / 2;
+      return { x: cb.left + cb.width / 2 - ox, y: cb.top + cb.height / 2 - oy };
+    }
   };
 
   (function fillFlies() {
