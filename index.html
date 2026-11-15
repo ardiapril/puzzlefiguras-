@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v49 cierre del valle + viento y sonido -->
+<!-- figuras v51 estrella gorda -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -3214,24 +3214,25 @@
 
 
   // ---- piezas v13: iconos en píxel (16x16, 4 tonos), originales ----
+  // v50: el "triangle" pasa a ser la chispa de 4 puntas (concepto 3), paleta naranja igual
   const LOCK_SVG = '<svg viewBox="0 0 11 13" aria-hidden="true"><rect x="1" y="5.5" width="9" height="7" rx="0" fill="currentColor"/><path d="M3 5.5 V3.8 a2.5 2.5 0 0 1 5 0 V5.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
   const PIX = {
     triangle: [
-      "................",
-      ".......H........",
-      "......HLD.......",
-      ".....HLLMD......",
-      "....HLLLMMD.....",
-      "...HLLLLMMMD....",
-      "..HLLLLLMMMMD...",
-      ".HLLLLLLMMMMMD..",
-      "HLLLLLLLMMMMMMD.",
-      "HLLLLLLMMMMMMMMD",
-      "HLLLLLMMMMMMMMMD",
-      "DLLLLMMMMMMMMMMD",
-      "DDDDDDDDDDDDDDDD",
-      "................",
-      "................",
+      ".......D........",
+      "......DHD.......",
+      ".....DHLLD......",
+      "....DHLLLMD.....",
+      "...DHLLLLMMD....",
+      "..DHLLLLLMMMD...",
+      ".DHLLLLLLMMMMD..",
+      "DHLLLLLLLLMMMMMD",
+      ".DHLLLLLLMMMMMD.",
+      "..DHLLLLMMMMD...",
+      "...DHLLLMMMD....",
+      "....DHLLMMD.....",
+      ".....DHLMD......",
+      "......DHD.......",
+      ".......D........",
       "................"
     ],
     circle: [
@@ -3253,22 +3254,25 @@
       ".....DDDDDD....."
     ],
     star: [
-      ".......HH.......",
-      "......HLLD......",
-      ".....HLLLMD.....",
-      "....HLLLLMMD....",
-      "HHHHLLLLLMMMDDDD",
-      ".HHHLLLLLMMMMDD.",
-      "..HHLLLLMMMMMD..",
-      "...HLLLLMMMMD...",
-      "..HLLLLMMMMMMD..",
-      ".HLLLLMMMMMMMMD.",
-      "HLLLLMD..DMMMMMD",
-      "HLLLMD....DMMMMD",
-      "HLLMD......DMMMD",
-      "DLMD........DMMD",
-      "DDD..........DDD",
-      "................"
+      "...................",
+      ".........D.........",
+      "........DMD........",
+      ".......DMMMD.......",
+      ".......DMMMD.......",
+      "....DDDMMMMMDDD....",
+      "...DMMMMLLLMMMMD...",
+      ".DDMMMMLLLLLMMMMDD.",
+      "..DMMMLLHHHLLMMMD..",
+      "..DDDMLLHHHLLMDDD..",
+      ".....DLLHHHLLD.....",
+      ".....DMLLLLLMD.....",
+      "....DMMMLLLMMMD....",
+      "....DMMMMDMMMMD....",
+      "....DMMMD.DMMMD....",
+      "....DDDD...DDDD....",
+      "....D.........D....",
+      "...................",
+      "..................."
     ],
     heart: [
       "................",
@@ -3307,9 +3311,10 @@
     const g = PIX[name];
     pal = pal || (PIX_PAL && PIX_PAL[name]);
     if (!g || !pal) return "";
+    const n = g.length;
     let s = "";
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < g[y].length; x++) {
         const ch = g[y].charAt(x);
         if (ch !== "." && pal[ch]) {
           s += '<rect x="' + x + '" y="' + y + '" width="1" height="1" fill="' + pal[ch] + '"/>';
@@ -3327,15 +3332,16 @@
       SYM_SVG[n] = pixSvg(n);
       const cv = document.createElement("canvas");
       const scale = 8;
-      cv.width = 16 * scale;
-      cv.height = 16 * scale;
-      const ctx = cv.getContext("2d");
-      ctx.imageSmoothingEnabled = false;
       const g = PIX[n];
       const pal = PIX_PAL && PIX_PAL[n];
+      const size = (g && g.length) ? g.length : 16;
+      cv.width = size * scale;
+      cv.height = size * scale;
+      const ctx = cv.getContext("2d");
+      ctx.imageSmoothingEnabled = false;
       if (g && pal) {
-        for (let y = 0; y < 16; y++) {
-          for (let x = 0; x < 16; x++) {
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < g[y].length; x++) {
             const ch = g[y].charAt(x);
             if (ch !== "." && pal[ch]) {
               ctx.fillStyle = pal[ch];
