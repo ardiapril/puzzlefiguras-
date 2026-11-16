@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v53 reparto -->
+<!-- figuras v54 al toque -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -742,7 +742,7 @@
     transform-origin: var(--ox, 50%) var(--oy, 50%);
   }
   .slot.pressing .mini { transform: scale(1.08); transition: transform .09s ease-out; }
-  /* v53 reparto: remolino brillante en el hueco de la bandeja al coger una pieza */
+  /* v54 al toque: nube suave que gira en el hueco + destellos de estrella muy pequeños (~0,5 s) */
   .pick-swirl {
     position: fixed;
     width: 0; height: 0;
@@ -751,20 +751,19 @@
   }
   .pick-swirl .sw-core {
     position: absolute;
-    left: -16px; top: -16px;
-    width: 32px; height: 32px;
     border-radius: 50%;
-    background: radial-gradient(circle, #fffdf2 0 16%, var(--sw, #b07cff) 38%, transparent 70%);
-    box-shadow: 0 0 18px 6px var(--sw, #b07cff);
+    background:
+      radial-gradient(circle at 38% 36%, rgba(255,253,242,.55) 0 10%, transparent 34%),
+      radial-gradient(circle, color-mix(in srgb, var(--sw, #b07cff) 70%, transparent) 0 22%, color-mix(in srgb, var(--sw, #b07cff) 30%, transparent) 46%, transparent 70%);
     opacity: 0;
   }
   .pick-swirl .sw-arm { position: absolute; left: 0; top: 0; width: 0; height: 0; }
   .pick-swirl .sw-dot {
     position: absolute;
     left: 0; top: 0;
-    border-radius: 50%;
     background: #fffaf0;
-    box-shadow: 0 0 5px 2px var(--sw, #b07cff), 0 0 1px 1px #fff;
+    clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+    filter: drop-shadow(0 0 1.5px var(--sw, #b07cff));
     opacity: 0;
   }
   /* v52 tacto: banda de luz sobre cada fila/columna que se va a romper antes de soltar */
@@ -6875,10 +6874,11 @@
   // v52 tacto: con el dedo, la pieza entera queda por encima del punto de toque
   // (su borde inferior a ~1 casilla del dedo); con ratón, la casilla cogida bajo el cursor.
   // v53: unas 2 casillas por encima del dedo
-  const LIFT_CELLS = 2, LIFT_MIN_CELLS = 0.5;
+  // v54 al toque: unas 3 casillas (con tope arriba para no salirse del tablero)
+  const LIFT_CELLS = 3, LIFT_MIN_CELLS = 0.5;
   function liftGapPx(info) {
     if (info && info.pointerType === "mouse") return null;
-    return Math.max(56, Math.round(info.cellPx * LIFT_CELLS));
+    return Math.max(84, Math.round(info.cellPx * LIFT_CELLS));
   }
   function liftedTopLeft(info, x, y) {
     const size = info.cellPx;
@@ -6893,8 +6893,11 @@
       // v53: cerca del borde de arriba la pieza sube menos, para no salirse del tablero
       // (nunca menos de media casilla sobre el dedo)
       let lift = above;
+      // v54 al toque: si la bandeja queda lejos del tablero (pantallas altas), por debajo del
+      // tablero sube un poco más (de forma suave) para que al tocar la pieza ya esté sobre el tablero
+      if (info.boardBottom != null && info.liftExtra > 0 && y > info.boardBottom) lift += info.liftExtra * (y - info.boardBottom);
       const top = info.boardTop;
-      if (top != null) lift = Math.max(Math.round(size * LIFT_MIN_CELLS), Math.min(above, y - h - top));
+      if (top != null) lift = Math.max(Math.round(size * LIFT_MIN_CELLS), Math.min(lift, y - h - top));
       gy = y - lift - h;
     }
     return { gx: gx, gy: gy, size: size, gap: gap };
@@ -6966,7 +6969,13 @@
     }
     info.ghost = ghost;
     info.cellPx = size;
-    info.boardTop = boardEl.getBoundingClientRect().top;
+    const bRect = boardEl.getBoundingClientRect();
+    info.boardTop = bRect.top;
+    info.boardBottom = bRect.bottom;
+    // v54: cuánto extra sube por debajo del tablero (0 si la bandeja ya está cerca)
+    const below = pt.y - bRect.bottom;
+    const baseLift = liftGapPx({ pointerType: info.pointerType, cellPx: size });
+    info.liftExtra = (baseLift != null && below > 0) ? Math.max(0, Math.min(0.7, (below - baseLift + size * 0.15) / below)) : 0;
     info.trayScale = Math.max(0.35, Math.min(1, trayCell / size));
     info.bounds = b;
     info.anchorR = anchorR;
@@ -6994,7 +7003,7 @@
   }
 
   // ---- v53: remolino en el hueco de la bandeja y vuelta de la pieza ----
-  const GROW_MS = 85, RETURN_MS = 130, SWIRL_MS = 1250;
+  const GROW_MS = 85, RETURN_MS = 130, SWIRL_MS = 500; // v54: remolino de ~0,5 s
   let pickSwirlEl = null;
   function removePickSwirl() {
     if (pickSwirlEl && pickSwirlEl.parentNode) pickSwirlEl.remove();
@@ -7009,58 +7018,65 @@
     const syms = [];
     piece.cells.forEach(function (c) { if (syms.indexOf(c.symbol) < 0) syms.push(c.symbol); });
     const c1 = COLOR[syms[0]] || "#b07cff", c2 = COLOR[syms[1] || syms[0]] || c1;
+    const cell = dragCellPx();
     const el = document.createElement("div");
     el.className = "pick-swirl";
     el.setAttribute("aria-hidden", "true");
     el.style.left = (r.left + r.width / 2) + "px";
     el.style.top = (r.top + r.height / 2) + "px";
     el.style.setProperty("--sw", c1);
+    // v54: nube circular de ~1,5 casillas que gira y se abre un poco
+    const cloud = Math.round(cell * 1.5);
     const core = document.createElement("div");
     core.className = "sw-core";
+    core.style.width = cloud + "px"; core.style.height = cloud + "px";
+    core.style.left = (-cloud / 2) + "px"; core.style.top = (-cloud / 2) + "px";
     el.appendChild(core);
-    const n = quiet ? 6 : 12 + Math.floor(Math.random() * 4); // 12-15 puntitos
-    const maxR = Math.min(r.width, r.height) * 0.5;
-    const dur = quiet ? 700 : SWIRL_MS;
+    const n = quiet ? 4 : 6 + Math.floor(Math.random() * 3); // 6-8 destellos
+    const dur = quiet ? 350 : SWIRL_MS;
+    const star = Math.max(3.5, cell / 10);
     const anims = [];
     for (let i = 0; i < n; i++) {
       const arm = document.createElement("div");
       arm.className = "sw-arm";
       const dot = document.createElement("div");
       dot.className = "sw-dot";
-      const sz = 2.5 + Math.random() * 2.5;
+      const sz = star * (0.85 + Math.random() * 0.4);
       dot.style.width = sz + "px"; dot.style.height = sz + "px";
       dot.style.marginLeft = (-sz / 2) + "px"; dot.style.marginTop = (-sz / 2) + "px";
       dot.style.setProperty("--sw", i % 2 ? c2 : c1);
       arm.appendChild(dot);
       el.appendChild(arm);
-      const a0 = (i / n) * 360 + Math.random() * 18;
-      const turn = 220 + Math.random() * 120;     // giro en sentido horario
-      const rad = maxR * (0.62 + Math.random() * 0.38);
-      const delay = Math.random() * 120;
+      const a0 = (i / n) * 360 + Math.random() * 25;
+      const turn = 40 + Math.random() * 30;
+      const r0 = cloud * (0.22 + Math.random() * 0.12);
+      const r1 = cloud * (0.48 + Math.random() * 0.14); // salen hacia fuera solo un poquito
+      const delay = Math.random() * 70;
       if (arm.animate) {
         anims.push(arm.animate([
           { transform: "rotate(" + a0.toFixed(1) + "deg)" },
           { transform: "rotate(" + (a0 + turn).toFixed(1) + "deg)" }
-        ], { duration: dur - delay, delay: delay, easing: "cubic-bezier(.3,.5,.4,1)", fill: "both" }));
+        ], { duration: dur - delay, delay: delay, easing: "ease-out", fill: "both" }));
         anims.push(dot.animate([
-          { transform: "translateX(3px) scale(.6)", opacity: 0 },
-          { transform: "translateX(" + (rad * 0.35).toFixed(1) + "px) scale(1.1)", opacity: 1, offset: 0.18 },
-          { transform: "translateX(" + (rad * 0.8).toFixed(1) + "px) scale(.9)", opacity: 0.85, offset: 0.7 },
-          { transform: "translateX(" + rad.toFixed(1) + "px) scale(.5)", opacity: 0 }
+          { transform: "translateX(" + r0.toFixed(1) + "px) scale(.3) rotate(0deg)", opacity: 0 },
+          { transform: "translateX(" + ((r0 + r1) / 2).toFixed(1) + "px) scale(1) rotate(25deg)", opacity: 1, offset: 0.3 },
+          { transform: "translateX(" + r1.toFixed(1) + "px) scale(.4) rotate(45deg)", opacity: 0 }
         ], { duration: dur - delay, delay: delay, easing: "ease-out", fill: "both" }));
       }
     }
     if (core.animate) {
       anims.push(core.animate([
-        { opacity: 0, transform: "scale(.4) rotate(0deg)" },
-        { opacity: 1, transform: "scale(1.15) rotate(60deg)", offset: 0.15 },
-        { opacity: 0.75, transform: "scale(.9) rotate(160deg)", offset: 0.6 },
-        { opacity: 0, transform: "scale(.3) rotate(260deg)" }
+        { opacity: 0, transform: "scale(.7) rotate(0deg)" },
+        { opacity: 0.9, transform: "scale(.95) rotate(50deg)", offset: 0.25 },
+        { opacity: 0, transform: "scale(1.15) rotate(150deg)" }
       ], { duration: dur, easing: "ease-out", fill: "both" }));
     }
     document.body.appendChild(el);
     pickSwirlEl = el;
     el._dots = n;
+    el._cloud = cloud;
+    el._star = star;
+    el._dur = dur;
     setTimeout(function () { if (pickSwirlEl === el) removePickSwirl(); else if (el.parentNode) el.remove(); }, dur + 60);
     return el;
   }
@@ -7094,6 +7110,9 @@
     a.onfinish = function () { flyBack = null; done(); };
   }
   let flyBack = null;
+  // v54 al toque: qué cuenta como «toque para girar»
+  const TAP_MS = 220, TAP_PX = 10;
+  let lastTap = null;
 
   function onDown(e) {
     if (locked || over || rotating) return;
@@ -7117,24 +7136,24 @@
       startY: pt.y,
       moved: false,
       slot: slot,
-      pointerType: e.pointerType || "touch"
+      pointerType: e.pointerType || "touch",
+      t0: performance.now(),
+      maxD: 0
     };
-    slot.classList.add("pressing");
-    pickSparks(pt.x, pt.y, piece);
+    // v54 al toque: sin umbral; la pieza crece y sube sobre el tablero en cuanto el dedo la toca.
+    // (las chispitas de la v52 se quitan: se solapaban con el remolino del hueco)
     try { Snd.pick(); } catch (err) {}
+    beginDragFrom(drag, pt);
   }
 
   function onMove(e) {
     if (!drag) return;
     if (e.pointerId != null && drag.pointerId != null && e.pointerId !== drag.pointerId) return;
     const pt = point(e);
-    if (!drag.moved) {
-      const dx = pt.x - drag.startX, dy = pt.y - drag.startY;
-      if (dx * dx + dy * dy < ROT_MOVE_PX * ROT_MOVE_PX) return;
-      e.preventDefault();
-      beginDragFrom(drag, pt);
-      return;
-    }
+    const dx = pt.x - drag.startX, dy = pt.y - drag.startY;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d > drag.maxD) drag.maxD = d;
+    if (!drag.moved) return;
     e.preventDefault();
     placeGhost(pt.x, pt.y);
     schedulePreview();
@@ -7156,6 +7175,22 @@
     clearLineGlow();
     renderBoard();
     const slot = trayEl.querySelector('.slot[data-i="' + info.index + '"]');
+    // v54 al toque: toque corto sin moverse (< TAP_MS y < TAP_PX) = girar, como antes.
+    // La pieza vuelve al momento a su hueco y gira allí (nunca se coloca con un toque).
+    if (e && e.type !== "pointercancel" && !cancelled) {
+      const pt = point(e);
+      const ddx = pt.x - info.startX, ddy = pt.y - info.startY;
+      const dEnd = Math.sqrt(ddx * ddx + ddy * ddy);
+      const tapDur = performance.now() - (info.t0 || 0);
+      if (tapDur < TAP_MS && Math.max(info.maxD || 0, dEnd) < TAP_PX) {
+        dragLayer.innerHTML = "";
+        removePickSwirl();
+        if (slot) slot.classList.remove("dragging", "pressing");
+        lastTap = { index: info.index, ms: Math.round(tapDur), d: Math.round(Math.max(info.maxD || 0, dEnd)) };
+        rotateTrayPiece(info.index, slot);
+        return;
+      }
+    }
     if (!cancelled && info.target && !info.target.bad) {
       dragLayer.innerHTML = "";
       if (slot) slot.classList.remove("dragging");
@@ -7308,7 +7343,9 @@
       return { x: r.left, y: r.top, dots: pickSwirlEl._dots, color: pickSwirlEl.style.getPropertyValue("--sw") };
     },
     isFlyingBack: function () { return !!flyBack; },
-    timings: function () { return { grow: GROW_MS, ret: RETURN_MS, swirl: SWIRL_MS, liftCells: LIFT_CELLS }; },
+    timings: function () { return { grow: GROW_MS, ret: RETURN_MS, swirl: SWIRL_MS, liftCells: LIFT_CELLS, tapMs: TAP_MS, tapPx: TAP_PX }; },
+    lastTap: function () { return lastTap; },
+    swirlSize: function () { return pickSwirlEl ? { cloud: pickSwirlEl._cloud, star: pickSwirlEl._star, dur: pickSwirlEl._dur, dots: pickSwirlEl._dots } : null; },
     boardRect: function () { const r = boardEl.getBoundingClientRect(); return { top: r.top, left: r.left, bottom: r.bottom, right: r.right }; },
     // v53 reparto: lectura para pruebas
     reparto: function () { return { trioIndex: trioIndex, dryTrios: dryTrios, trioCleared: trioCleared, log: JSON.parse(JSON.stringify(repartoLog)) }; },
