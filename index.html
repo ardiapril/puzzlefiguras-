@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v52 tacto -->
+<!-- figuras v53 reparto -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -737,10 +737,36 @@
     pointer-events: none;
   }
   #dragLayer .lift .mini {
-    filter: drop-shadow(0 12px 16px rgba(0,0,0,.42)) drop-shadow(0 3px 4px rgba(0,0,0,.28));
+    /* v53: sombra oscura desplazada abajo-derecha */
+    filter: drop-shadow(7px 13px 14px rgba(0,0,0,.48)) drop-shadow(2px 4px 4px rgba(0,0,0,.32));
     transform-origin: var(--ox, 50%) var(--oy, 50%);
   }
   .slot.pressing .mini { transform: scale(1.08); transition: transform .09s ease-out; }
+  /* v53 reparto: remolino brillante en el hueco de la bandeja al coger una pieza */
+  .pick-swirl {
+    position: fixed;
+    width: 0; height: 0;
+    pointer-events: none;
+    z-index: 45;
+  }
+  .pick-swirl .sw-core {
+    position: absolute;
+    left: -16px; top: -16px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fffdf2 0 16%, var(--sw, #b07cff) 38%, transparent 70%);
+    box-shadow: 0 0 18px 6px var(--sw, #b07cff);
+    opacity: 0;
+  }
+  .pick-swirl .sw-arm { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+  .pick-swirl .sw-dot {
+    position: absolute;
+    left: 0; top: 0;
+    border-radius: 50%;
+    background: #fffaf0;
+    box-shadow: 0 0 5px 2px var(--sw, #b07cff), 0 0 1px 1px #fff;
+    opacity: 0;
+  }
   /* v52 tacto: banda de luz sobre cada fila/columna que se va a romper antes de soltar */
   .line-glow {
     position: absolute;
@@ -3018,6 +3044,381 @@
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
 </script>
+<script id="reparto">
+// ===== v53 «reparto»: cómo se reparten las tandas de piezas =====
+// Envuelve el reparto de FigurasLogic POR FUERA (la lógica no se toca).
+// Ideas: arranque protegido, ayuda al hueco, curva de dificultad suave,
+// ayuda tras racha mala y evitar tandas sin ninguna pieza que quepa.
+// NUNCA se reparte a propósito una tanda imposible.
+(function (root) {
+  const L = root.FigurasLogic;
+  // ---------- Constantes ajustables ----------
+  const REPARTO = {
+    ON: true,                 // false = reparto como en la v52 (azar puro)
+    OPENING_TRIOS: 2,         // tandas protegidas al empezar (las 3 caben en algún orden)
+    GAP_CHANCE: 0.30,         // probabilidad base de «ayuda al hueco» por tanda
+    GAP_CHANCE_FULL: 0.35,    // extra cuando el tablero está lleno
+    GAP_FULL_FROM: 0.40,      // a partir de este % ocupado empieza el extra
+    GAP_FULL_TO: 0.75,        // con este % ocupado el extra es completo
+    GAP_STORM_MULT: 0.6,      // en tormenta la ayuda al hueco sale menos
+    GAP_MIN_FILLED: 5,        // la fila/columna que se completa debía tener ≥ 5 casillas ocupadas
+    DRY_TRIOS: 3,             // tandas seguidas sin romper línea ni grupo → ayuda
+    RESCUE_FILL: 0.62,        // tablero ocupado ≥ 62 % → ayuda
+    CURVE_TRIOS: 30,          // tandas hasta llegar a la dificultad normal…
+    CURVE_SCORE: 3000,        // …o estos puntos (lo que llegue antes)
+    HARD_TRIOS: 80,           // a partir de aquí, algo más de piezas grandes…
+    HARD_SCORE: 7000,         // …o con estos puntos (antes de la tormenta)
+    // pesos por tamaño de pieza: [1-2, 3-4, 5-6, 7-9] casillas; los de la lógica son [5,4,2,1]
+    // Al principio: piezas «cómodas» = rectángulos y barras, también grandes (2×3, 3×3, barra de 5),
+    // que llenan rápido y rompen líneas fácil (lo que Jardiel notó en Block Blast).
+    W_EASY: [4, 4, 2.6, 1.6],
+    W_NORMAL: [5, 4, 2, 1],
+    W_HARD: [4.5, 4, 2.4, 1.3],
+    AWKWARD_EASY: 0.5,        // peso de las formas incómodas (L, S, Z, T, esquinas) al principio
+    AWKWARD_HARD: 1.25,       // y al final de la curva
+    FIT_BUDGET: 2500          // límite de simulaciones al comprobar si una tanda cabe
+  };
+  const SIZE = L.SIZE;
+
+  function sizeClass(n) { return n <= 2 ? 0 : n <= 4 ? 1 : n <= 6 ? 2 : 3; }
+  // forma «incómoda»: no es un rectángulo lleno (L, T, S, Z, esquinas grandes)
+  function isAwkward(shape) {
+    let mr = 0, mc = 0;
+    for (let i = 0; i < shape.length; i++) { mr = Math.max(mr, shape[i][0]); mc = Math.max(mc, shape[i][1]); }
+    return (mr + 1) * (mc + 1) !== shape.length;
+  }
+  const SHAPES = L.SHAPES.map(function (s) { return L.normalizeShape(s); });
+  const AWK = SHAPES.map(isAwkward);
+
+  // ---------- RNG ----------
+  // El juego usa Math.random. Se puede pasar otro (p. ej. con semilla) y todo
+  // el reparto lo usará, así una misma semilla da siempre las mismas tandas.
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ---------- Curva de dificultad ----------
+  // d: 0 = cómodo, 0.6 = normal (igual que la lógica), 1 = algo más duro.
+  // Con tormenta o calma activas no se pasa de 0.6: la tormenta ya mete las grandes.
+  function difficulty(trioIndex, score, stormOn) {
+    const a = Math.max(trioIndex / REPARTO.CURVE_TRIOS, score / REPARTO.CURVE_SCORE);
+    let d = 0.6 * Math.min(1, a);
+    if (a >= 1) {
+      const b = Math.max((trioIndex - REPARTO.CURVE_TRIOS) / Math.max(1, REPARTO.HARD_TRIOS - REPARTO.CURVE_TRIOS),
+        (score - REPARTO.CURVE_SCORE) / Math.max(1, REPARTO.HARD_SCORE - REPARTO.CURVE_SCORE));
+      d = 0.6 + 0.4 * Math.max(0, Math.min(1, b));
+    }
+    if (stormOn) d = Math.min(d, 0.6);
+    return d;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function shapeWeights(d) {
+    const w = [];
+    for (let i = 0; i < SHAPES.length; i++) {
+      const k = sizeClass(SHAPES[i].length);
+      let base, awk;
+      if (d <= 0.6) { const t = d / 0.6; base = lerp(REPARTO.W_EASY[k], REPARTO.W_NORMAL[k], t); awk = lerp(REPARTO.AWKWARD_EASY, 1, t); }
+      else { const t = (d - 0.6) / 0.4; base = lerp(REPARTO.W_NORMAL[k], REPARTO.W_HARD[k], t); awk = lerp(1, REPARTO.AWKWARD_HARD, t); }
+      w.push(base * (AWK[i] ? awk : 1));
+    }
+    return w;
+  }
+  function pickWeighted(weights, rng) {
+    let tot = 0;
+    for (let i = 0; i < weights.length; i++) tot += weights[i];
+    let x = rng() * tot;
+    for (let i = 0; i < weights.length; i++) { x -= weights[i]; if (x < 0) return i; }
+    return weights.length - 1;
+  }
+  // mismos colores que generatePiece: dos mitades unidas de dos figuras distintas
+  function colorShape(shape, rng) {
+    const a = L.SYMBOLS[Math.floor(rng() * L.SYMBOLS.length)];
+    const others = L.SYMBOLS.filter(function (x) { return x !== a; });
+    const b = others[Math.floor(rng() * others.length)];
+    const n = shape.length;
+    if (n === 1) return L.makePiece(shape, [a]);
+    const nb = function (i, j) { return Math.abs(shape[i][0] - shape[j][0]) + Math.abs(shape[i][1] - shape[j][1]) === 1; };
+    const deg = shape.map(function (_, i) { let d = 0; for (let j = 0; j < n; j++) if (i !== j && nb(i, j)) d++; return d; });
+    const minDeg = Math.min.apply(null, deg);
+    const ends = []; for (let i = 0; i < n; i++) if (deg[i] === minDeg) ends.push(i);
+    const start = ends[Math.floor(rng() * ends.length)];
+    const order = [start], seen = {}; seen[start] = 1;
+    for (let k = 0; k < order.length; k++) {
+      for (let j = 0; j < n; j++) if (!seen[j] && nb(order[k], j)) { seen[j] = 1; order.push(j); }
+    }
+    const half = rng() < 0.5 ? Math.floor(n / 2) : Math.ceil(n / 2);
+    const syms = Array(n);
+    for (let k = 0; k < n; k++) syms[order[k]] = k < half ? a : b;
+    return L.makePiece(shape, syms);
+  }
+  function curvedPiece(d, rng) {
+    return colorShape(SHAPES[pickWeighted(shapeWeights(d), rng)], rng);
+  }
+  // Tanda base con la curva (sustituye a L.generateTrio, mismos colores)
+  function baseTrio(ctx) {
+    const rng = ctx.rng || Math.random;
+    if (!REPARTO.ON) return L.generateTrio();
+    const d = difficulty(ctx.trioIndex || 0, ctx.score || 0, !!ctx.stormOn);
+    return [curvedPiece(d, rng), curvedPiece(d, rng), curvedPiece(d, rng)];
+  }
+
+  // ---------- Simulación ----------
+  function cloneBoard(b) {
+    const out = new Array(SIZE);
+    for (let r = 0; r < SIZE; r++) {
+      const nr = new Array(SIZE);
+      for (let c = 0; c < SIZE; c++) { const v = b[r][c]; nr[c] = v ? Object.assign({}, v) : null; }
+      out[r] = nr;
+    }
+    return out;
+  }
+  function rotateCW(piece) {
+    const shape = piece.cells.map(function (c) { return [c.dc, -c.dr]; });
+    return L.makePiece(L.normalizeShape(shape), piece.cells.map(function (c) { return c.symbol; }));
+  }
+  function sig(p) { return p.cells.map(function (c) { return c.dr + ":" + c.dc + ":" + c.symbol; }).sort().join("|"); }
+  function rotations(piece) {
+    const out = [], seen = {};
+    let p = piece;
+    for (let i = 0; i < 4; i++) { const s = sig(p); if (!seen[s]) { seen[s] = 1; out.push(p); } p = rotateCW(p); }
+    return out;
+  }
+  function fitsAnyRot(b, piece) {
+    if (!piece) return false;
+    const rs = rotations(piece);
+    for (let i = 0; i < rs.length; i++) if (L.pieceFits(b, rs[i])) return true;
+    return false;
+  }
+  function filledCount(b) {
+    let n = 0;
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (b[r][c]) n++;
+    return n;
+  }
+  // coloca en una copia y aplica grupos y líneas como en la jugada real (sin azar)
+  function simPlace(b, piece, r, c) {
+    const nb = cloneBoard(b);
+    const placed = L.placePiece(nb, piece, r, c);
+    if (!placed) return null;
+    const m = L.evalMatches(nb, placed);
+    if (m.matchCells.length) L.applyMatches(nb, m);
+    const l = L.evalLines(nb);
+    if (l.lineCells.length) L.hitCells(nb, l.lineCells);
+    return { board: nb, lines: l.nLines, groups: m.groups.length, rows: l.lines.rows, cols: l.lines.cols };
+  }
+  // ¿Puede esta colocación completar alguna fila/columna? (filtro rápido)
+  function mayClear(rowFill, colFill, piece, r, c) {
+    const pr = {}, pc = {};
+    for (let i = 0; i < piece.cells.length; i++) {
+      const a = r + piece.cells[i].dr, b = c + piece.cells[i].dc;
+      pr[a] = (pr[a] || 0) + 1; pc[b] = (pc[b] || 0) + 1;
+    }
+    for (const k in pr) if (rowFill[k] + pr[k] === SIZE) return true;
+    for (const k in pc) if (colFill[k] + pc[k] === SIZE) return true;
+    return false;
+  }
+  function lineFills(b) {
+    const rf = [], cf = [];
+    for (let i = 0; i < SIZE; i++) { rf[i] = 0; cf[i] = 0; }
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (b[r][c]) { rf[r]++; cf[c]++; }
+    return { rf: rf, cf: cf };
+  }
+  // ¿Esta pieza completa (en algún giro y sitio) una fila/columna casi llena? Devuelve la mejor jugada.
+  function bestClear(b, piece) {
+    const f = lineFills(b);
+    const rs = rotations(piece);
+    let best = null;
+    for (let k = 0; k < rs.length; k++) {
+      const p = rs[k];
+      for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+        if (!L.canPlace(b, p, r, c) || !mayClear(f.rf, f.cf, p, r, c)) continue;
+        const s = simPlace(b, p, r, c);
+        if (!s || !s.lines) continue;
+        let near = false;
+        for (let i = 0; i < s.rows.length; i++) if (f.rf[s.rows[i]] >= REPARTO.GAP_MIN_FILLED) near = true;
+        for (let i = 0; i < s.cols.length; i++) if (f.cf[s.cols[i]] >= REPARTO.GAP_MIN_FILLED) near = true;
+        if (!near) continue;
+        if (!best || s.lines > best.lines) best = { piece: p, r: r, c: c, lines: s.lines, board: s.board };
+      }
+    }
+    return best;
+  }
+  // colocación «razonable» para simular: primero la que rompe más, luego la más pegada a bordes/piezas
+  function goodPlacement(b, piece) {
+    const f = lineFills(b);
+    const rs = rotations(piece);
+    let best = null, bestS = -1;
+    for (let k = 0; k < rs.length; k++) {
+      const p = rs[k];
+      for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+        if (!L.canPlace(b, p, r, c)) continue;
+        let s = 0;
+        if (mayClear(f.rf, f.cf, p, r, c)) s += 100;
+        for (let i = 0; i < p.cells.length; i++) {
+          const rr = r + p.cells[i].dr, cc = c + p.cells[i].dc;
+          const nbs = [[rr - 1, cc], [rr + 1, cc], [rr, cc - 1], [rr, cc + 1]];
+          for (let j = 0; j < 4; j++) {
+            const y = nbs[j][0], x = nbs[j][1];
+            if (y < 0 || y >= SIZE || x < 0 || x >= SIZE || b[y][x]) s += 1;
+          }
+        }
+        if (s > bestS) { bestS = s; best = { piece: p, r: r, c: c }; }
+      }
+    }
+    if (!best) return null;
+    const sim = simPlace(b, best.piece, best.r, best.c);
+    return { piece: best.piece, r: best.r, c: best.c, board: sim.board, lines: sim.lines };
+  }
+  // ¿Caben las 3 en algún orden? Búsqueda con límite de simulaciones.
+  // Devuelve true (cabe), false (seguro que no) o null (no se pudo saber a tiempo).
+  function trioFitsSequence(b, pieces) {
+    const list = pieces.filter(Boolean);
+    let budget = REPARTO.FIT_BUDGET, unknown = false;
+    function dfs(bd, rest) {
+      if (!rest.length) return true;
+      if (rest.length === 1) return fitsAnyRot(bd, rest[0]);
+      for (let i = 0; i < rest.length; i++) {
+        const others = rest.slice(0, i).concat(rest.slice(i + 1));
+        const rs = rotations(rest[i]);
+        for (let k = 0; k < rs.length; k++) {
+          for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+            if (!L.canPlace(bd, rs[k], r, c)) continue;
+            if (budget-- <= 0) { unknown = true; return false; }
+            const s = simPlace(bd, rs[k], r, c);
+            if (dfs(s.board, others)) return true;
+          }
+        }
+      }
+      return false;
+    }
+    const ok = dfs(b, list);
+    return ok ? true : (unknown ? null : false);
+  }
+  // pieza que quepa en el tablero, con la curva (null si no cabe ninguna forma)
+  function fittingPiece(b, d, rng) {
+    const w = shapeWeights(d).slice();
+    for (let tries = 0; tries < SHAPES.length; tries++) {
+      const i = pickWeighted(w, rng);
+      w[i] = 0;
+      const p = colorShape(SHAPES[i], rng);
+      if (fitsAnyRot(b, p)) return p;
+      let left = 0; for (let j = 0; j < w.length; j++) left += w[j];
+      if (left <= 0) break;
+    }
+    return null;
+  }
+  // Rehace la tanda para que las 3 quepan en orden (cambia solo las que no caben).
+  // order: índices en el orden de simulación.
+  function repairSequence(b, tray, order, d, rng, keep) {
+    let sim = b, changed = 0;
+    const out = tray.slice();
+    for (let n = 0; n < order.length; n++) {
+      const i = order[n];
+      if (!out[i]) continue;
+      let gp = goodPlacement(sim, out[i]);
+      if (!gp && !(keep && keep[i])) {
+        const np = fittingPiece(sim, d, rng);
+        if (np) { out[i] = np; changed++; gp = goodPlacement(sim, np); }
+      }
+      if (gp) sim = gp.board;
+    }
+    return { tray: out, changed: changed };
+  }
+  // pieza de ayuda al hueco: una forma que completa una fila/columna casi llena
+  function findGapHelper(b, d, rng) {
+    const w = shapeWeights(d);
+    const cands = [], cw = [];
+    for (let i = 0; i < SHAPES.length; i++) {
+      const p = colorShape(SHAPES[i], rng);
+      const bc = bestClear(b, p);
+      if (!bc) continue;
+      cands.push(p);
+      // como Block Blast: mejor la pieza «justa»; más peso si rompe varias
+      cw.push(w[i] * (1 + 0.6 * (bc.lines - 1)));
+    }
+    if (!cands.length) return null;
+    return cands[pickWeighted(cw, rng)];
+  }
+
+  // ---------- Reparto de una tanda ----------
+  // ctx: { board (ya con piedras/enredaderas), tray, trioIndex, score, stormOn,
+  //        stormSlots (índices con pieza de tormenta), dryTrios, rng }
+  // Devuelve { tray, acts } con las ayudas que actuaron.
+  function adjust(ctx) {
+    const rng = ctx.rng || Math.random;
+    const acts = { opening: false, gap: false, rescue: false, anyFit: false, curve: false, impossible: false };
+    let tray = ctx.tray.slice();
+    if (!REPARTO.ON) return { tray: tray, acts: acts };
+    const b = ctx.board;
+    const fill = filledCount(b) / (SIZE * SIZE);
+    const d = difficulty(ctx.trioIndex || 0, ctx.score || 0, !!ctx.stormOn);
+    acts.curve = d < 0.6 || d > 0.6;
+    const storm = ctx.stormSlots || {};
+    const opening = (ctx.trioIndex || 0) < REPARTO.OPENING_TRIOS;
+    const rescue = !opening && ((ctx.dryTrios || 0) >= REPARTO.DRY_TRIOS || fill >= REPARTO.RESCUE_FILL);
+    let gapChance = REPARTO.GAP_CHANCE + REPARTO.GAP_CHANCE_FULL *
+      Math.max(0, Math.min(1, (fill - REPARTO.GAP_FULL_FROM) / (REPARTO.GAP_FULL_TO - REPARTO.GAP_FULL_FROM)));
+    if (ctx.stormOn) gapChance *= REPARTO.GAP_STORM_MULT;
+    const gapRoll = rng() < gapChance;
+    const wantClear = rescue || gapRoll;
+    let helperIdx = -1;
+
+    // 1) Ayuda al hueco (o la pieza que rompe de la ayuda tras racha mala)
+    if (wantClear) {
+      let already = -1;
+      for (let i = 0; i < 3; i++) if (tray[i] && bestClear(b, tray[i])) { already = i; break; }
+      if (already >= 0) helperIdx = already;
+      else {
+        const h = findGapHelper(b, d, rng);
+        if (h) {
+          // sustituye una pieza normal (no la de la tormenta si se puede)
+          const free = [0, 1, 2].filter(function (i) { return !storm[i]; });
+          const pool = free.length ? free : [0, 1, 2];
+          helperIdx = pool[Math.floor(rng() * pool.length)];
+          tray[helperIdx] = h;
+          if (rescue) acts.rescue = true; else acts.gap = true;
+        }
+      }
+    }
+    // 2) Arranque protegido y tras racha mala: las 3 caben en algún orden
+    if (opening || rescue) {
+      const ok = trioFitsSequence(b, tray);
+      if (ok !== true) {
+        const order = helperIdx >= 0 ? [helperIdx].concat([0, 1, 2].filter(function (i) { return i !== helperIdx; })) : [0, 1, 2];
+        const keep = {}; if (helperIdx >= 0) keep[helperIdx] = true;
+        const rep = repairSequence(b, tray, order, d, rng, keep);
+        if (rep.changed) {
+          tray = rep.tray;
+          if (opening) acts.opening = true; else acts.rescue = true;
+        }
+      }
+    }
+    // 3) Siempre: que quepa al menos una (si el tablero admite alguna forma)
+    if (!tray.some(function (p) { return fitsAnyRot(b, p); })) {
+      const np = fittingPiece(b, d, rng);
+      if (np) {
+        const free = [0, 1, 2].filter(function (i) { return !storm[i]; });
+        const pool = free.length ? free : [0, 1, 2];
+        tray[pool[Math.floor(rng() * pool.length)]] = np;
+        acts.anyFit = true;
+      } else acts.impossible = true; // ninguna forma cabe: no hay nada que hacer
+    }
+    return { tray: tray, acts: acts };
+  }
+
+  root.FigurasReparto = {
+    REPARTO: REPARTO, mulberry32: mulberry32, difficulty: difficulty, shapeWeights: shapeWeights,
+    baseTrio: baseTrio, adjust: adjust, trioFitsSequence: trioFitsSequence, bestClear: bestClear,
+    findGapHelper: findGapHelper, fitsAnyRot: fitsAnyRot, filledCount: filledCount
+  };
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
 
 <script>
 (function () {
@@ -4790,10 +5191,39 @@
   }
 
   let lineStreak = 0; // v52 tacto: jugadas seguidas que rompen línea (sube la nota)
+  // ---- v53 reparto: estado de la partida para FigurasReparto (ver <script id="reparto">) ----
+  const R = (typeof FigurasReparto !== "undefined") ? FigurasReparto : null;
+  let trioIndex = 0;      // tandas repartidas en esta partida (0 = la primera)
+  let dryTrios = 0;       // tandas seguidas sin romper línea ni grupo
+  let trioCleared = false; // ¿se rompió algo en la tanda actual?
+  let repartoRng = Math.random; // se puede cambiar por uno con semilla (FigurasReparto.mulberry32)
+  let repartoLog = { trios: 0, opening: 0, gap: 0, rescue: 0, anyFit: 0, impossible: 0, last: null };
+  function dealTrio(stormed) {
+    // stormed: función opcional que aplica la tormenta a la tanda base
+    if (!R) { const t = L.generateTrio(); return stormed ? stormed(t) : t; }
+    const stormOn = !!stormParams(score);
+    const ctx = { trioIndex: trioIndex, score: score, stormOn: stormOn, rng: repartoRng };
+    const base = R.baseTrio(ctx);
+    let t = stormed ? stormed(base) : base;
+    const stormSlots = {};
+    for (let i = 0; i < 3; i++) if (t[i] !== base[i]) stormSlots[i] = true;
+    return { tray: t, stormSlots: stormSlots, stormOn: stormOn };
+  }
+  function adjustTrio(deal) {
+    if (!R) return deal;
+    const res = R.adjust({ board: board, tray: deal.tray, trioIndex: trioIndex, score: score, stormOn: deal.stormOn,
+      stormSlots: deal.stormSlots, dryTrios: dryTrios, rng: repartoRng });
+    repartoLog.trios++;
+    ["opening", "gap", "rescue", "anyFit", "impossible"].forEach(function (k) { if (res.acts[k]) repartoLog[k]++; });
+    repartoLog.last = Object.assign({ trioIndex: trioIndex, dryTrios: dryTrios }, res.acts);
+    return res.tray;
+  }
   function newGame() {
     board = L.makeBoard();
     lineStreak = 0;
-    tray = L.generateTrio();
+    trioIndex = 0; dryTrios = 0; trioCleared = false;
+    repartoLog = { trios: 0, opening: 0, gap: 0, rescue: 0, anyFit: 0, impossible: 0, last: null };
+    if (R) { score = 0; tray = adjustTrio(dealTrio(null)); } else tray = L.generateTrio();
     score = 0;
     locked = false;
     over = false;
@@ -4814,6 +5244,7 @@
     dragLayer.innerHTML = "";
     clearLineGlow();
     clearBurst();
+    removePickSwirl();
     overlayEl.classList.add("hidden");
     overlayEl.innerHTML = "";
     clearValleyClose();
@@ -5757,10 +6188,15 @@
     async function maybeRefill() {
     if (won || goalMet()) return;
     if (tray.every(function (p) { return !p; })) {
-      tray = L.generateTrio();
-      tray = applyStormTray(tray, score);
+      // v53 reparto: tanda con curva + tormenta; después de piedras/enredaderas se revisan las ayudas
+      dryTrios = trioCleared ? 0 : dryTrios + 1;
+      trioCleared = false;
+      trioIndex++;
+      const deal = R ? dealTrio(function (t) { return applyStormTray(t, score); }) : null;
+      tray = deal ? deal.tray : applyStormTray(L.generateTrio(), score);
       const sp = L.spawnForTrio(board, score);
       const extra = applyStormSpawn(board, score);
+      if (deal) { deal.tray = tray; tray = adjustTrio(deal); }
       renderBoard();
       growStoneCells((sp.stones || []).concat(extra.stones || []));
       if (sp.vine) cellEls[sp.vine.r][sp.vine.c].classList.add("vinegrow");
@@ -6355,6 +6791,7 @@
     if (events >= 2) popCombo(events);   // combo: varias explosiones en una jugada
     const brokenStones = (m.stoneCells || []).slice();
     lineStreak = lineCells.length ? lineStreak + 1 : 0;
+    if (lineCells.length || m.groups.length) trioCleared = true; // v53 reparto: racha mala
     if (lineCells.length) {
       const lineTrapped = Object.create(null);
       l.trappedCells.forEach(function (p) { lineTrapped[p.r + "," + p.c] = 1; });
@@ -6437,9 +6874,11 @@
 
   // v52 tacto: con el dedo, la pieza entera queda por encima del punto de toque
   // (su borde inferior a ~1 casilla del dedo); con ratón, la casilla cogida bajo el cursor.
+  // v53: unas 2 casillas por encima del dedo
+  const LIFT_CELLS = 2, LIFT_MIN_CELLS = 0.5;
   function liftGapPx(info) {
     if (info && info.pointerType === "mouse") return null;
-    return Math.max(28, Math.round(info.cellPx * 1.1));
+    return Math.max(56, Math.round(info.cellPx * LIFT_CELLS));
   }
   function liftedTopLeft(info, x, y) {
     const size = info.cellPx;
@@ -6449,7 +6888,15 @@
     const above = liftGapPx(info);
     let gy;
     if (above == null) gy = y - info.anchorR * (size + gap) - size / 2;
-    else gy = y - above - (b.rows * size + (b.rows - 1) * gap);
+    else {
+      const h = b.rows * size + (b.rows - 1) * gap;
+      // v53: cerca del borde de arriba la pieza sube menos, para no salirse del tablero
+      // (nunca menos de media casilla sobre el dedo)
+      let lift = above;
+      const top = info.boardTop;
+      if (top != null) lift = Math.max(Math.round(size * LIFT_MIN_CELLS), Math.min(above, y - h - top));
+      gy = y - lift - h;
+    }
     return { gx: gx, gy: gy, size: size, gap: gap };
   }
   function placeGhost(x, y) {
@@ -6519,6 +6966,8 @@
     }
     info.ghost = ghost;
     info.cellPx = size;
+    info.boardTop = boardEl.getBoundingClientRect().top;
+    info.trayScale = Math.max(0.35, Math.min(1, trayCell / size));
     info.bounds = b;
     info.anchorR = anchorR;
     info.anchorC = anchorC;
@@ -6537,11 +6986,114 @@
       mini.animate([
         { transform: "translate(0px," + dy0.toFixed(1) + "px) scale(" + s0.toFixed(3) + ")" },
         { transform: "translate(0px,0px) scale(1)" }
-      ], { duration: 130, easing: "cubic-bezier(.2,.8,.3,1.15)" });
+      ], { duration: GROW_MS, easing: "cubic-bezier(.2,.75,.3,1)" }); // v53: rápido y sin rebote
     }
+    showPickSwirl(info.index, piece);
     buzz(8);
     updatePreview();
   }
+
+  // ---- v53: remolino en el hueco de la bandeja y vuelta de la pieza ----
+  const GROW_MS = 85, RETURN_MS = 130, SWIRL_MS = 1250;
+  let pickSwirlEl = null;
+  function removePickSwirl() {
+    if (pickSwirlEl && pickSwirlEl.parentNode) pickSwirlEl.remove();
+    pickSwirlEl = null;
+  }
+  function showPickSwirl(index, piece) {
+    removePickSwirl();
+    const slot = trayEl.querySelector('.slot[data-i="' + index + '"]');
+    if (!slot || !piece || !piece.cells) return null;
+    const r = slot.getBoundingClientRect();
+    const quiet = reducedMotion();
+    const syms = [];
+    piece.cells.forEach(function (c) { if (syms.indexOf(c.symbol) < 0) syms.push(c.symbol); });
+    const c1 = COLOR[syms[0]] || "#b07cff", c2 = COLOR[syms[1] || syms[0]] || c1;
+    const el = document.createElement("div");
+    el.className = "pick-swirl";
+    el.setAttribute("aria-hidden", "true");
+    el.style.left = (r.left + r.width / 2) + "px";
+    el.style.top = (r.top + r.height / 2) + "px";
+    el.style.setProperty("--sw", c1);
+    const core = document.createElement("div");
+    core.className = "sw-core";
+    el.appendChild(core);
+    const n = quiet ? 6 : 12 + Math.floor(Math.random() * 4); // 12-15 puntitos
+    const maxR = Math.min(r.width, r.height) * 0.5;
+    const dur = quiet ? 700 : SWIRL_MS;
+    const anims = [];
+    for (let i = 0; i < n; i++) {
+      const arm = document.createElement("div");
+      arm.className = "sw-arm";
+      const dot = document.createElement("div");
+      dot.className = "sw-dot";
+      const sz = 2.5 + Math.random() * 2.5;
+      dot.style.width = sz + "px"; dot.style.height = sz + "px";
+      dot.style.marginLeft = (-sz / 2) + "px"; dot.style.marginTop = (-sz / 2) + "px";
+      dot.style.setProperty("--sw", i % 2 ? c2 : c1);
+      arm.appendChild(dot);
+      el.appendChild(arm);
+      const a0 = (i / n) * 360 + Math.random() * 18;
+      const turn = 220 + Math.random() * 120;     // giro en sentido horario
+      const rad = maxR * (0.62 + Math.random() * 0.38);
+      const delay = Math.random() * 120;
+      if (arm.animate) {
+        anims.push(arm.animate([
+          { transform: "rotate(" + a0.toFixed(1) + "deg)" },
+          { transform: "rotate(" + (a0 + turn).toFixed(1) + "deg)" }
+        ], { duration: dur - delay, delay: delay, easing: "cubic-bezier(.3,.5,.4,1)", fill: "both" }));
+        anims.push(dot.animate([
+          { transform: "translateX(3px) scale(.6)", opacity: 0 },
+          { transform: "translateX(" + (rad * 0.35).toFixed(1) + "px) scale(1.1)", opacity: 1, offset: 0.18 },
+          { transform: "translateX(" + (rad * 0.8).toFixed(1) + "px) scale(.9)", opacity: 0.85, offset: 0.7 },
+          { transform: "translateX(" + rad.toFixed(1) + "px) scale(.5)", opacity: 0 }
+        ], { duration: dur - delay, delay: delay, easing: "ease-out", fill: "both" }));
+      }
+    }
+    if (core.animate) {
+      anims.push(core.animate([
+        { opacity: 0, transform: "scale(.4) rotate(0deg)" },
+        { opacity: 1, transform: "scale(1.15) rotate(60deg)", offset: 0.15 },
+        { opacity: 0.75, transform: "scale(.9) rotate(160deg)", offset: 0.6 },
+        { opacity: 0, transform: "scale(.3) rotate(260deg)" }
+      ], { duration: dur, easing: "ease-out", fill: "both" }));
+    }
+    document.body.appendChild(el);
+    pickSwirlEl = el;
+    el._dots = n;
+    setTimeout(function () { if (pickSwirlEl === el) removePickSwirl(); else if (el.parentNode) el.remove(); }, dur + 60);
+    return el;
+  }
+  // la pieza vuelve volando a su hueco mientras encoge
+  function flyBackToSlot(info) {
+    const ghost = info.ghost;
+    const slot = trayEl.querySelector('.slot[data-i="' + info.index + '"]');
+    const mini = ghost && ghost.querySelector(".mini");
+    const done = function () {
+      if (ghost && ghost.parentNode) ghost.remove();
+      if (drag) { // ya se está arrastrando otra: no rehacer la bandeja
+        const sl = trayEl.querySelector('.slot[data-i="' + info.index + '"]');
+        if (sl && drag.index !== info.index) sl.classList.remove("dragging");
+        return;
+      }
+      if (slot) slot.classList.remove("dragging");
+      renderTray();
+    };
+    if (!ghost || !slot || !mini || !ghost.animate || reducedMotion()) { dragLayer.innerHTML = ""; done(); return; }
+    const gr = mini.getBoundingClientRect();
+    const sr = slot.getBoundingClientRect();
+    const s = info.trayScale || 0.55;
+    const tx = (sr.left + sr.width / 2) - (gr.left + gr.width / 2);
+    const ty = (sr.top + sr.height / 2) - (gr.top + gr.height / 2);
+    mini.style.transformOrigin = "50% 50%";
+    const a = mini.animate([
+      { transform: "translate(0px,0px) scale(1)" },
+      { transform: "translate(" + tx.toFixed(1) + "px," + ty.toFixed(1) + "px) scale(" + s.toFixed(3) + ")" }
+    ], { duration: RETURN_MS, easing: "cubic-bezier(.4,0,.7,1)", fill: "forwards" });
+    flyBack = { index: info.index, t0: performance.now() };
+    a.onfinish = function () { flyBack = null; done(); };
+  }
+  let flyBack = null;
 
   function onDown(e) {
     if (locked || over || rotating) return;
@@ -6601,15 +7153,17 @@
     }
     cancelPreview();
     drag = null;
-    dragLayer.innerHTML = "";
     clearLineGlow();
     renderBoard();
     const slot = trayEl.querySelector('.slot[data-i="' + info.index + '"]');
-    if (slot) slot.classList.remove("dragging");
     if (!cancelled && info.target && !info.target.bad) {
+      dragLayer.innerHTML = "";
+      if (slot) slot.classList.remove("dragging");
       await applyPlacement(info.index, info.target.r, info.target.c);
     } else {
-      renderTray();
+      // v53: fuera o sitio inválido → el remolino se apaga y la pieza vuelve volando a su hueco
+      removePickSwirl();
+      flyBackToSlot(info);
     }
   }
   async function onUp(e) { await finishPointer(e, false); }
@@ -6747,6 +7301,18 @@
     fxStats: function () { return { particles: burst.parts.length, peak: burst.peak, total: burst.total, sparks: burst.sparks || 0, running: !!burst.raf, lineGlows: fxEl.querySelectorAll(".line-glow").length }; },
     resetFxStats: function () { burst.peak = 0; burst.total = 0; burst.sparks = 0; },
     getLineStreak: function () { return lineStreak; },
+    // v53: remolino y vuelta (lectura para pruebas)
+    swirlInfo: function () {
+      if (!pickSwirlEl) return null;
+      const r = pickSwirlEl.getBoundingClientRect();
+      return { x: r.left, y: r.top, dots: pickSwirlEl._dots, color: pickSwirlEl.style.getPropertyValue("--sw") };
+    },
+    isFlyingBack: function () { return !!flyBack; },
+    timings: function () { return { grow: GROW_MS, ret: RETURN_MS, swirl: SWIRL_MS, liftCells: LIFT_CELLS }; },
+    boardRect: function () { const r = boardEl.getBoundingClientRect(); return { top: r.top, left: r.left, bottom: r.bottom, right: r.right }; },
+    // v53 reparto: lectura para pruebas
+    reparto: function () { return { trioIndex: trioIndex, dryTrios: dryTrios, trioCleared: trioCleared, log: JSON.parse(JSON.stringify(repartoLog)) }; },
+    setRepartoSeed: function (seed) { repartoRng = (R && seed != null) ? R.mulberry32(seed) : Math.random; },
     burstTier: burstTier,
     dragInfo: function () {
       if (!drag || !drag.ghost) return null;
@@ -6758,8 +7324,12 @@
       if (!drag || !drag.ghost) return null;
       const cb = cellEls[r][c].getBoundingClientRect();
       const t0 = liftedTopLeft(drag, 0, 0);
-      const ox = t0.gx + t0.size / 2, oy = t0.gy + t0.size / 2;
-      return { x: cb.left + cb.width / 2 - ox, y: cb.top + cb.height / 2 - oy };
+      const ox = t0.gx + t0.size / 2;
+      // v53: la subida depende de la altura del dedo (cerca del borde de arriba sube menos)
+      const cy = cb.top + cb.height / 2;
+      let y = cy + 4 * t0.size;
+      for (let k = 0; k < 6; k++) { const t = liftedTopLeft(drag, 0, y); y = cy - (t.gy + t.size / 2 - y); }
+      return { x: cb.left + cb.width / 2 - ox, y: y };
     }
   };
 
