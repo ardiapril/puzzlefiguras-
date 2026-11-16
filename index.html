@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v54 al toque -->
+<!-- figuras v56 sonidos -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -718,6 +718,9 @@
     transform: rotate(90deg);
   }
   .slot.rotating { pointer-events: none; }
+  /* v55 giro limpio: botecito suave de la pieza ya girada */
+  @keyframes rotSettle { 0% { transform: scale(.94); } 55% { transform: scale(1.04); } 100% { transform: scale(1); } }
+  .slot .mini.settle { animation: rotSettle 160ms cubic-bezier(.3,.7,.4,1); }
   #dragLayer {
     position: fixed;
     left: 0; top: 0;
@@ -4222,6 +4225,7 @@
   const ROT_MOVE_PX = 12;
   const ROT_HINT_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.2 8A5.2 5.2 0 1 1 11 3.7"/><path d="M11 1.8v3h3"/></svg>';
   let rotating = false;
+  let lastRotateAt = 0;
 
   function rotatePieceCW(piece) {
     if (!piece || !piece.cells) return piece;
@@ -4264,9 +4268,14 @@
       tray[index] = next;
       rotating = false;
       renderTray();
+      // v55 giro limpio: la pieza girada se asienta con un botecito suave
+      const nm = trayEl.querySelector('.slot[data-i="' + index + '"] .mini');
+      if (nm && !reducedMotion()) { nm.classList.add("settle"); setTimeout(function () { nm.classList.remove("settle"); }, 200); }
       dismissTuto();
     }
     rotating = true;
+    lastRotateAt = performance.now();
+    try { Snd.rotate(); } catch (e) {}
     buzz(8);
     if (!mini) { commit(); return; }
     slot.classList.add("rotating");
@@ -4452,7 +4461,7 @@
       const u = UNLOCKS[i];
       if (!unlocked[u.key] && score >= u.at) {
         unlocked[u.key] = true;
-        if (mode === "infinite") showBanner(u.text, u.key);
+        if (mode === "infinite") { showBanner(u.text, u.key); try { Snd.ding(); } catch (e) {} }
       }
     }
   }
@@ -4498,6 +4507,8 @@
       else { scoreRaf = 0; shownScore = target; scoreEl.textContent = String(target); }
     }
     scoreRaf = requestAnimationFrame(step);
+    // v56: chorrito de ticks mientras el número sube (solo en subidas grandes: líneas, grupos)
+    if (diff >= 20) { try { Snd.ticks(dur); } catch (e) {} }
     if (diff >= 20 && scoreBox.animate) {
       const big = diff >= 100 ? 1.28 : diff >= 50 ? 1.2 : 1.12;
       scoreBox.animate([
@@ -4576,7 +4587,7 @@
         recordJustBeaten = true;
         if (bestAtStart > 0) {
           showBanner("🏆 ¡Nuevo récord!", "record");
-          try { Snd.combo(2); } catch (e) {}
+          try { Snd.record(); } catch (e) {}
           buzz([20, 40, 20, 40, 80]);
         }
       }
@@ -4608,55 +4619,59 @@
   }
 
   // ---- sonido sintetizado (WebAudio, sin archivos) ----
+  // v56 sonidos: un único sistema de sonido. Todos los sonidos son propios, sintetizados al momento
+  // con osciladores y ruido filtrado (ningún audio grabado ni copiado). SYNTH recibe un "bus"
+  // (contexto + salida + cola de reverb) para que la misma síntesis sirva en vivo y en la demo offline.
   const SOUND_KEY = "figuras_sonido";
   let soundOn = true;
   try { soundOn = localStorage.getItem(SOUND_KEY) !== "0"; } catch (e) { soundOn = true; }
-  const Snd = (function () {
-    let ctx = null, master = null, noiseBuf = null, failed = false;
+  const SYNTH = (function () {
     const SEMI = Math.pow(2, 1 / 12);
     const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
-    function ensure() {
-      if (ctx || failed) return ctx;
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) { failed = true; return null; }
+    const MAJOR = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24];
+    function st(f, s) { return f * Math.pow(SEMI, s); }
+    // bus: master (ganancia) → compresor suave → salida; reverb corta (impulso generado) → master
+    function makeBus(c, dest) {
+      const master = c.createGain();
+      master.gain.value = 0.9;
+      const comp = c.createDynamicsCompressor();
       try {
-        ctx = new AC();
-        master = ctx.createGain();
-        master.gain.value = 0.5;
-        const comp = ctx.createDynamicsCompressor();
-        master.connect(comp);
-        comp.connect(ctx.destination);
-      } catch (e) { failed = true; ctx = null; }
-      return ctx;
-    }
-    function unlock() {
-      if (!soundOn) return;
-      const c = ensure();
-      if (!c) return;
-      try {
-        if (c.state !== "running" && c.resume) c.resume();
-        if (!unlock.done) {
-          const b = c.createBuffer(1, 1, 22050);
-          const src = c.createBufferSource();
-          src.buffer = b; src.connect(c.destination); src.start(0);
-          unlock.done = true;
-        }
+        comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4;
+        comp.attack.value = 0.003; comp.release.value = 0.22;
       } catch (e) {}
+      master.connect(comp); comp.connect(dest || c.destination);
+      const rev = c.createGain();
+      rev.gain.value = 0.32;
+      try {
+        const len = Math.floor(c.sampleRate * 1.3);
+        const ir = c.createBuffer(2, len, c.sampleRate);
+        for (let ch = 0; ch < 2; ch++) {
+          const d = ir.getChannelData(ch);
+          for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+        }
+        const conv = c.createConvolver();
+        conv.buffer = ir;
+        const tone = c.createBiquadFilter();
+        tone.type = "lowpass"; tone.frequency.value = 6500;
+        rev.connect(conv); conv.connect(tone); tone.connect(master);
+      } catch (e) { rev.connect(master); }
+      const nb = c.createBuffer(1, Math.floor(c.sampleRate * 0.8), c.sampleRate);
+      const nd = nb.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      return { c: c, out: master, rev: rev, noise: nb, nodes: 0, tick: null };
     }
-    function ready() {
-      if (!soundOn) return null;
-      const c = ensure();
-      if (!c) return null;
-      if (c.state === "suspended") { try { c.resume(); } catch (e) {} }
-      return c;
-    }
-    function env(c, g, t, vol, att, dur) {
+    function env(g, t, vol, att, dur) {
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol, t + att);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + att);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     }
-    function tone(c, t, freq, type, dur, vol, o) {
+    function route(b, g, o) {
+      g.connect(o.out || b.out);
+      if (o.rev) { const s = b.c.createGain(); s.gain.value = o.rev; g.connect(s); s.connect(b.rev); }
+    }
+    function tone(b, t, freq, type, dur, vol, o) {
       o = o || {};
+      const c = b.c;
       const osc = c.createOscillator(), g = c.createGain();
       osc.type = type;
       osc.frequency.setValueAtTime(freq, t);
@@ -4668,118 +4683,270 @@
         if (o.lpTo) f.frequency.exponentialRampToValueAtTime(o.lpTo, t + dur * 0.7);
         osc.connect(f); node = f;
       }
-      env(c, g, t, vol, o.att || 0.006, dur);
-      node.connect(g); g.connect(master);
+      env(g, t, vol, o.att || 0.006, dur);
+      node.connect(g); route(b, g, o);
       osc.start(t); osc.stop(t + dur + 0.03);
+      b.nodes++;
     }
-    function noise(c, t, dur, vol, type, f0, f1, q) {
-      if (!noiseBuf) {
-        noiseBuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.6), c.sampleRate);
-        const d = noiseBuf.getChannelData(0);
-        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      }
+    function noise(b, t, dur, vol, type, f0, f1, q, o) {
+      o = o || {};
+      const c = b.c;
       const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-      src.buffer = noiseBuf;
+      src.buffer = b.noise;
       f.type = type; f.Q.value = q || 1;
       f.frequency.setValueAtTime(f0, t);
       if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
-      env(c, g, t, vol, 0.01, dur);
-      src.connect(f); f.connect(g); g.connect(master);
-      src.start(t); src.stop(t + dur + 0.03);
+      env(g, t, vol, o.att || 0.004, dur);
+      src.connect(f); f.connect(g); route(b, g, o);
+      const off = Math.random() * 0.5;
+      src.start(t, off); src.stop(t + dur + 0.03);
+      b.nodes++;
     }
-    // una "voz" distinta para cada figura
+    // campanita de cristal: parciales casi armónicos que se apagan rápido + cola de reverb
+    function bell(b, t, f, dur, vol, rev) {
+      tone(b, t, f, "sine", dur, vol, { att: 0.002, rev: rev });
+      tone(b, t, f * 2.01, "sine", dur * 0.5, vol * 0.35, { att: 0.002, rev: rev });
+      tone(b, t, f * 3.03, "sine", dur * 0.22, vol * 0.14, { att: 0.001 });
+    }
+    // tecla tipo piano (las notas que suben con la racha, como en la v52)
+    function key(b, t, f, dur, vol) {
+      tone(b, t, f, "triangle", dur, vol, { att: 0.003, rev: 0.12 });
+      tone(b, t, f * 2, "sine", dur * 0.6, vol * 0.3, { att: 0.002 });
+      tone(b, t, f * 3, "sine", dur * 0.3, vol * 0.1, { att: 0.002 });
+    }
+    function sparkle(b, t, span, n, vol) {
+      for (let i = 0; i < n; i++) {
+        const tt = t + Math.random() * span;
+        noise(b, tt, 0.018 + Math.random() * 0.02, vol * (0.6 + Math.random() * 0.4), "bandpass", 5200 + Math.random() * 4200, 0, 6, { att: 0.001, rev: 0.25 });
+      }
+    }
     const VOICE = {
-      triangle: function (c, t, f) { tone(c, t, f, "triangle", 0.22, 0.2); tone(c, t, f * 2, "sine", 0.12, 0.05); },
-      circle:   function (c, t, f) { tone(c, t, f * 0.75, "sine", 0.2, 0.24, { glide: 1.6, glideT: 0.08 }); },
-      star:     function (c, t, f) { tone(c, t, f * 1.5, "sine", 0.32, 0.13); tone(c, t, f * 1.5 * 2.76, "sine", 0.18, 0.05); tone(c, t + 0.03, f * 3, "sine", 0.14, 0.04); },
-      heart:    function (c, t, f) { tone(c, t, f * 0.5, "square", 0.24, 0.07, { lp: 2400, lpTo: 600 }); tone(c, t, f, "sine", 0.2, 0.1); }
+      triangle: function (b, t, f) { tone(b, t, f, "triangle", 0.22, 0.2); tone(b, t, f * 2, "sine", 0.12, 0.05); },
+      circle:   function (b, t, f) { tone(b, t, f * 0.75, "sine", 0.2, 0.24, { glide: 1.6, glideT: 0.08 }); },
+      star:     function (b, t, f) { tone(b, t, f * 1.5, "sine", 0.32, 0.13); tone(b, t, f * 1.5 * 2.76, "sine", 0.18, 0.05); tone(b, t + 0.03, f * 3, "sine", 0.14, 0.04); },
+      heart:    function (b, t, f) { tone(b, t, f * 0.5, "square", 0.24, 0.07, { lp: 2400, lpTo: 600 }); tone(b, t, f, "sine", 0.2, 0.1); }
     };
-    const BASE = { triangle: 523.25, circle: 523.25, star: 523.25, heart: 523.25 };
+    return {
+      makeBus: makeBus,
+      // 1. coger: "bloop" hueco de madera tipo marimba, medio-grave, corto y suave
+      pick: function (b, t) {
+        tone(b, t, 349, "sine", 0.12, 0.17, { glide: 1.14, glideT: 0.03, att: 0.002 });
+        tone(b, t, 349 * 4, "sine", 0.035, 0.035, { att: 0.001 });
+        tone(b, t, 349 * 2, "triangle", 0.05, 0.03, { att: 0.002 });
+        noise(b, t, 0.012, 0.03, "bandpass", 1900, 0, 3, { att: 0.001 });
+      },
+      // 2. arrastrar sobre el tablero: "toc" seco y bajito cada vez que cambia la casilla
+      drag: function (b, t, ok) {
+        const f = (ok ? 230 : 165) * (0.97 + Math.random() * 0.06);
+        tone(b, t, f, "sine", 0.04, ok ? 0.075 : 0.055, { glide: 0.7, glideT: 0.02, att: 0.001 });
+        noise(b, t, 0.014, ok ? 0.045 : 0.03, "bandpass", ok ? 1500 : 900, 0, 5, { att: 0.001 });
+      },
+      // 3. soltar bien: golpe de madera firme, más grave y fuerte que coger
+      drop: function (b, t, n) {
+        const k = Math.min(1.15, 0.85 + (n || 4) * 0.05);
+        tone(b, t, 150, "sine", 0.22, 0.34 * k, { glide: 0.55, glideT: 0.05, att: 0.001 });
+        tone(b, t, 410, "triangle", 0.07, 0.12 * k, { glide: 0.6, glideT: 0.03, att: 0.001 });
+        noise(b, t, 0.07, 0.22 * k, "bandpass", 1000, 380, 2, { att: 0.001 });
+        noise(b, t, 0.014, 0.07, "highpass", 3200, 0, 0.7, { att: 0.0008 });
+      },
+      // 4. soltar mal / la pieza vuelve: soplido rápido con caída de tono, sin golpe
+      whoosh: function (b, t) {
+        noise(b, t, 0.22, 0.16, "bandpass", 2100, 520, 0.9, { att: 0.07 });
+        noise(b, t + 0.02, 0.16, 0.04, "bandpass", 3600, 1500, 1.2, { att: 0.05 });
+        tone(b, t, 560, "sine", 0.18, 0.018, { glide: 0.55, att: 0.06 });
+      },
+      // 5. romper líneas: las notas de piano que suben con la racha (v52) + arpegio de
+      //    campanitas de cristal + chispitas + cola de reverb; más gordo con varias líneas
+      line: function (b, t, nLines, step, delaysMs) {
+        const big = nLines >= 2;
+        const start = Math.max(0, Math.min(5, step | 0));
+        const d = (delaysMs && delaysMs.length) ? delaysMs : [0, 26, 52, 78, 104, 130, 156, 182];
+        let last = 0, lastSemi = 0;
+        for (let i = 0; i < d.length && i < 8; i++) {
+          const semi = MAJOR[start + i];
+          key(b, t + d[i] / 1000, st(523.25, semi), 0.22 + (i === d.length - 1 ? 0.25 : 0), 0.085);
+          last = d[i] / 1000; lastSemi = semi;
+        }
+        const top = st(1046.5, start);
+        const ARP = big ? [0, 4, 7, 12, 16, 19, 24] : [0, 4, 7, 12, 16];
+        const gap = big ? 0.042 : 0.048;
+        for (let i = 0; i < ARP.length; i++) bell(b, t + 0.03 + i * gap, st(top, ARP[i]), 0.6 + (i === ARP.length - 1 ? 0.45 : 0), big ? 0.075 : 0.06, 0.45);
+        if (big) {
+          const tt = t + Math.max(last, ARP.length * gap) + 0.06;
+          const chord = nLines >= 3 ? [0, 4, 7, 12] : [0, 4, 7];
+          for (let i = 0; i < chord.length; i++) bell(b, tt + i * 0.012, st(st(523.25, lastSemi), chord[i]), 0.8, 0.06, 0.45);
+        }
+        sparkle(b, t + 0.02, big ? 0.75 : 0.55, big ? 16 + nLines * 3 : 10, big ? 0.05 : 0.038);
+        noise(b, t, big ? 0.4 : 0.3, big ? 0.07 : 0.045, "bandpass", 500, 4200, 0.8, { att: 0.02 });
+        tone(b, t, 125, "sine", 0.3, big ? 0.26 : 0.17, { glide: 0.5 });
+      },
+      // 6. combo: fanfarria corta y alegre (sin voz), sube con el nivel del combo
+      combo: function (b, t, k) {
+        k = Math.max(2, k | 0);
+        const up = Math.min(k - 2, 4) * 2;
+        const notes = k >= 4 ? [0, 4, 7, 12, 16] : k >= 3 ? [0, 4, 7, 12] : [0, 4, 7];
+        for (let i = 0; i < notes.length; i++) {
+          const f = st(784, notes[i] + up), tt = t + i * 0.08, last = i === notes.length - 1;
+          tone(b, tt, f, "triangle", last ? 0.5 : 0.16, 0.1, { att: 0.004, rev: 0.3 });
+          tone(b, tt, f * 2, "sine", last ? 0.35 : 0.1, 0.035, { att: 0.002, rev: 0.2 });
+          tone(b, tt, f * 0.5, "square", last ? 0.3 : 0.12, 0.018, { lp: 2200, lpTo: 900 });
+        }
+        sparkle(b, t + notes.length * 0.08, 0.3, 6, 0.03);
+      },
+      // 7. el marcador cuenta: chorrito de ticks agudos y suaves mientras sube el número
+      ticks: function (b, t, durS, n) {
+        if (b.tick) { try { b.tick.gain.cancelScheduledValues(t); b.tick.gain.setValueAtTime(0, t); } catch (e) {} }
+        const g = b.c.createGain(); g.gain.value = 1; g.connect(b.out); b.tick = g;
+        n = Math.max(3, Math.min(32, n | 0));
+        for (let i = 0; i < n; i++) {
+          const k = i / n;
+          tone(b, t + k * durS, 2300 + i * 22, "sine", 0.02, 0.028 * (1 - k * 0.55), { att: 0.001, out: g });
+        }
+      },
+      // 8. llega una tanda nueva de 3 piezas: "bloop" burbujeante medio-agudo
+      tray: function (b, t) {
+        [0, 1, 2].forEach(function (i) {
+          const f = 520 + i * 150;
+          tone(b, t + i * 0.055, f, "sine", 0.1, 0.075, { glide: 1.45, glideT: 0.05, att: 0.003 });
+          tone(b, t + i * 0.055, f * 2, "sine", 0.05, 0.02, { glide: 1.3, att: 0.002 });
+        });
+      },
+      // 9. momento especial (salvado, novedades): "din-din" que sube una tercera mayor
+      ding: function (b, t) {
+        bell(b, t, 1318.5, 0.35, 0.09, 0.35);
+        bell(b, t + 0.12, 1661.2, 0.6, 0.1, 0.4);
+      },
+      // nuevo récord / nivel superado: arpegio brillante + din-din + chispitas
+      record: function (b, t) {
+        [0, 4, 7, 12].forEach(function (s, i) { bell(b, t + i * 0.06, st(1046.5, s), 0.3, 0.07, 0.3); });
+        bell(b, t + 0.3, 1568, 0.35, 0.09, 0.4);
+        bell(b, t + 0.42, 1975.5, 0.7, 0.1, 0.45);
+        sparkle(b, t + 0.3, 0.6, 12, 0.035);
+      },
+      // 10. girar: clic pequeño y suave; botones: clic suave
+      rotate: function (b, t) {
+        tone(b, t, 980, "triangle", 0.03, 0.045, { glide: 0.78, att: 0.001 });
+        noise(b, t, 0.012, 0.03, "bandpass", 3200, 0, 4, { att: 0.001 });
+        tone(b, t + 0.035, 1250, "sine", 0.025, 0.02, { att: 0.001 });
+      },
+      click: function (b, t) {
+        tone(b, t, 720, "sine", 0.035, 0.05, { glide: 0.85, att: 0.001 });
+        noise(b, t, 0.01, 0.022, "bandpass", 2600, 0, 3, { att: 0.001 });
+      },
+      // fin de partida: notas que bajan, suaves
+      over: function (b, t) {
+        [523.25, 440, 349.2, 261.6].forEach(function (f, i) {
+          tone(b, t + i * 0.17, f, "triangle", 0.42, 0.09, { att: 0.01, rev: 0.3, lp: 2600, lpTo: 900 });
+          tone(b, t + i * 0.17, f / 2, "sine", 0.4, 0.06, { att: 0.01 });
+        });
+      },
+      // grupos de figuras: arpegio con una voz por figura (desde la v9)
+      group: function (b, t0, symbol, n, stagger) {
+        const voice = VOICE[symbol] || VOICE.triangle;
+        const shift = Math.min(Math.max(n - 4, 0), 7);
+        const notes = Math.min(n, 7);
+        for (let i = 0; i < notes; i++) voice(b, t0 + i * stagger, st(523.25, PENTA[Math.min(PENTA.length - 1, i)] + shift) / 2);
+      },
+      stone: function (b, t) {
+        tone(b, t, 150, "sine", 0.18, 0.22, { glide: 0.45 });
+        noise(b, t, 0.16, 0.16, "lowpass", 1400, 300);
+      },
+      vine: function (b, t) {
+        noise(b, t, 0.12, 0.09, "bandpass", 2600, 1400, 2);
+        noise(b, t + 0.07, 0.12, 0.07, "bandpass", 3200, 1800, 2);
+      },
+      wind: function (b, t) {
+        noise(b, t, 0.85, 0.22, "bandpass", 400, 2200, 0.8, { att: 0.08 });
+        noise(b, t + 0.08, 0.7, 0.12, "highpass", 800, 2400, 0.7, { att: 0.08 });
+        tone(b, t, 220, "sine", 0.55, 0.05, { glide: 2.8, glideT: 0.5 });
+        tone(b, t, 140, "sine", 0.4, 0.04, { glide: 0.5 });
+      }
+    };
+  })();
+  const Snd = (function () {
+    let ctx = null, bus = null, failed = false;
+    const log = [];      // v56: registro de solo lectura para las pruebas ({name, t, played, ...})
+    let lastDrag = -1e9, dragAsked = 0;
+    const DRAG_GAP_MS = 45;
+    function ensure() {
+      if (ctx || failed) return ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { failed = true; return null; }
+      try {
+        ctx = new AC();
+        bus = SYNTH.makeBus(ctx, ctx.destination);
+      } catch (e) { failed = true; ctx = null; bus = null; }
+      return ctx;
+    }
+    function unlock() {
+      if (!soundOn) return;
+      const c = ensure();
+      if (!c) return;
+      try {
+        if (c.state !== "running" && c.resume) c.resume();
+        if (!unlock.done) { // iPhone: un sonido vacío dentro del primer gesto desbloquea el audio
+          const b = c.createBuffer(1, 1, 22050);
+          const src = c.createBufferSource();
+          src.buffer = b; src.connect(c.destination); src.start(0);
+          unlock.done = true;
+        }
+      } catch (e) {}
+    }
+    function ready() {
+      if (!soundOn) return null;
+      const c = ensure();
+      if (!c || !bus) return null;
+      if (c.state === "suspended") { try { c.resume(); } catch (e) {} }
+      return bus;
+    }
+    function fire(name, delayS, fn, info) {
+      const e = { name: name, t: Math.round(performance.now()), played: false };
+      if (info) e.info = info;
+      const b = ready();
+      if (b) {
+        try { fn(b, b.c.currentTime + 0.005 + (delayS || 0)); e.played = true; } catch (err) { e.err = String(err && err.message || err); }
+      }
+      log.push(e);
+      if (log.length > 600) log.splice(0, log.length - 600);
+      return e.played;
+    }
     return {
       unlock: unlock,
       hasContext: function () { return !!ctx; },
       ctxState: function () { return ctx ? ctx.state : (failed ? "failed" : "none"); },
-      // v52 tacto: "toc" corto de madera al colocar
-      place: function () {
-        const c = ready(); if (!c) return; const t = c.currentTime + 0.005;
-        tone(c, t, 310, "sine", 0.07, 0.2, { glide: 0.62, glideT: 0.035, att: 0.002 });
-        tone(c, t, 760, "triangle", 0.03, 0.06, { glide: 0.8, att: 0.002 });
-        noise(c, t, 0.035, 0.09, "bandpass", 1300, 700, 4);
+      nodes: function () { return bus ? bus.nodes : 0; },
+      log: function () { return log.map(function (e) { return Object.assign({}, e); }); },
+      clearLog: function () { log.length = 0; dragAsked = 0; },
+      dragAsked: function () { return dragAsked; },
+      suspendForPageHide: function () { try { if (ctx && ctx.state === "running") ctx.suspend(); } catch (e) {} },
+      pick: function () { fire("pick", 0, SYNTH.pick); },
+      drag: function (ok) {
+        dragAsked++;
+        const now = performance.now();
+        if (now - lastDrag < DRAG_GAP_MS) return;
+        lastDrag = now;
+        fire("drag", 0, function (b, t) { SYNTH.drag(b, t, ok); }, { ok: !!ok });
       },
-      // grupo: arpegio ascendente, una nota por figura; más grande = más agudo
-      group: function (symbol, n, stagger) {
-        const c = ready(); if (!c) return; const t0 = c.currentTime + 0.01;
-        const voice = VOICE[symbol] || VOICE.triangle;
-        const shift = Math.min(Math.max(n - 4, 0), 7);
-        const notes = Math.min(n, 7);
-        const base = BASE[symbol] || 523.25;
-        for (let i = 0; i < notes; i++) {
-          const semi = PENTA[Math.min(PENTA.length - 1, i)] + shift;
-          voice(c, t0 + i * stagger, base * Math.pow(SEMI, semi) / 2);
-        }
-      },
-      stone: function () {
-        const c = ready(); if (!c) return; const t = c.currentTime + 0.01;
-        tone(c, t, 150, "sine", 0.18, 0.22, { glide: 0.45 });
-        noise(c, t, 0.16, 0.16, "lowpass", 1400, 300);
-      },
-      vine: function () {
-        const c = ready(); if (!c) return; const t = c.currentTime + 0.01;
-        noise(c, t, 0.12, 0.09, "bandpass", 2600, 1400, 2);
-        noise(c, t + 0.07, 0.12, 0.07, "bandpass", 3200, 1800, 2);
-      },
-      // v52 tacto: "pop" corto y suave de madera/plástico al coger una pieza
-      pick: function () {
-        const c = ready(); if (!c) return; const t = c.currentTime + 0.004;
-        tone(c, t, 520, "sine", 0.07, 0.13, { glide: 0.55, glideT: 0.04, att: 0.003 });
-        tone(c, t, 1240, "triangle", 0.035, 0.035, { glide: 0.7, att: 0.002 });
-        noise(c, t, 0.025, 0.05, "bandpass", 1900, 1100, 3);
-      },
-      // líneas (v52 tacto): cada casilla que se va del barrido suena una nota más aguda
-      // (escalita mayor tipo piano, sincronizada con delaysMs). Con cada jugada seguida que
-      // rompe línea (step 0, 1, 2…) toda la escala empieza un grado más arriba; varias
-      // líneas a la vez rematan con un pequeño arpegio ascendente.
+      place: function (n) { fire("drop", 0, function (b, t) { SYNTH.drop(b, t, n); }, { cells: n || 0 }); },
+      whoosh: function () { fire("whoosh", 0, SYNTH.whoosh); },
       line: function (nLines, step, delaysMs) {
-        const c = ready(); if (!c) return; const t = c.currentTime + 0.01;
-        const big = nLines >= 2;
-        const MAJOR = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24];
-        const start = Math.max(0, Math.min(5, step | 0));
-        const d = (delaysMs && delaysMs.length) ? delaysMs : [0, 26, 52, 78, 104, 130, 156, 182];
-        function key(tt, f, dur, vol) {
-          tone(c, tt, f, "triangle", dur, vol, { att: 0.003 });
-          tone(c, tt, f * 2, "sine", dur * 0.6, vol * 0.3, { att: 0.002 });
-          tone(c, tt, f * 3, "sine", dur * 0.3, vol * 0.1, { att: 0.002 });
-        }
-        let last = 0, lastSemi = 0;
-        for (let i = 0; i < d.length && i < 8; i++) {
-          const semi = MAJOR[start + i];
-          key(t + d[i] / 1000, 523.25 * Math.pow(SEMI, semi), 0.22 + (i === d.length - 1 ? 0.25 : 0), 0.11);
-          last = d[i] / 1000; lastSemi = semi;
-        }
-        if (big) {
-          const top = 523.25 * Math.pow(SEMI, lastSemi);
-          const ARP = nLines >= 3 ? [0, 4, 7, 12] : [0, 4, 7];
-          for (let i = 0; i < ARP.length; i++) key(t + last + 0.06 + i * 0.05, top * Math.pow(SEMI, ARP[i]) / 2, 0.45, 0.09);
-        }
-        noise(c, t, big ? 0.45 : 0.32, big ? 0.14 : 0.09, "bandpass", 400, 3800, 0.8);
-        tone(c, t, 130, "sine", 0.3, big ? 0.3 : 0.2, { glide: 0.5 });
+        fire(nLines >= 2 ? "line_multi" : "line", 0.005, function (b, t) { SYNTH.line(b, t, nLines, step, delaysMs); }, { lines: nLines, step: step | 0 });
       },
-      combo: function (k) {
-        const c = ready(); if (!c) return; const t = c.currentTime + 0.02;
-        const f = [1046.5, 1318.5, 1568, 2093];
-        for (let i = 0; i < Math.min(4, k + 1); i++) tone(c, t + i * 0.06, f[i], "sine", 0.22, 0.1);
+      combo: function (k, delayS) { fire("combo", delayS || 0, function (b, t) { SYNTH.combo(b, t, k); }, { k: k }); },
+      ticks: function (durMs) {
+        const n = Math.round(Math.min(1200, durMs) / 34);
+        fire("ticks", 0.02, function (b, t) { SYNTH.ticks(b, t, Math.min(1.2, durMs / 1000), n); }, { ms: Math.round(durMs), n: n });
       },
-      wind: function () {
-        const c = ready(); if (!c) return; const t = c.currentTime + 0.01;
-        noise(c, t, 0.85, 0.22, "bandpass", 400, 2200, 0.8);
-        noise(c, t + 0.08, 0.7, 0.12, "highpass", 800, 2400, 0.7);
-        tone(c, t, 220, "sine", 0.55, 0.05, { glide: 2.8, glideT: 0.5 });
-        tone(c, t, 140, "sine", 0.4, 0.04, { glide: 0.5 });
-      },
-      over: function () {
-        const c = ready(); if (!c) return; const t = c.currentTime + 0.01;
-        [392, 330, 262, 196].forEach(function (f, i) { tone(c, t + i * 0.13, f, "triangle", 0.3, 0.14); });
-      }
+      tray: function () { fire("tray", 0.02, SYNTH.tray); },
+      ding: function () { fire("ding", 0, SYNTH.ding); },
+      record: function () { fire("record", 0.05, SYNTH.record); },
+      rotate: function () { fire("rotate", 0, SYNTH.rotate); },
+      click: function () { fire("click", 0, SYNTH.click); },
+      over: function () { fire("over", 0.01, SYNTH.over); },
+      group: function (symbol, n, stagger) { fire("group", 0.005, function (b, t) { SYNTH.group(b, t, symbol, n, stagger); }, { symbol: symbol, n: n }); },
+      stone: function () { fire("stone", 0.005, SYNTH.stone); },
+      vine: function () { fire("vine", 0.005, SYNTH.vine); },
+      wind: function () { fire("wind", 0.005, SYNTH.wind); }
     };
   })();
   function beep(kind) {
@@ -4790,11 +4957,22 @@
       else if (kind === "place") Snd.place();
       else if (kind === "stone") Snd.stone();
       else if (kind === "combo") Snd.combo(2);
+      else if (kind === "ding") Snd.ding();
+      else if (kind === "record") Snd.record();
     } catch (e) {}
   }
-  ["touchend", "pointerdown", "click", "keydown"].forEach(function (ev) {
+  ["touchstart", "touchend", "pointerdown", "click", "keydown"].forEach(function (ev) {
     document.addEventListener(ev, function () { Snd.unlock(); }, { capture: true, passive: true });
   });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") Snd.suspendForPageHide();
+  });
+  // v56: clic suave en todos los botones (el de sonido suena él solo al encenderse)
+  document.addEventListener("click", function (e) {
+    const btn = e.target && e.target.closest ? e.target.closest("button") : null;
+    if (!btn || btn.id === "btnSound" || btn.disabled) return;
+    try { Snd.click(); } catch (err) {}
+  }, true);
   const btnSound = document.getElementById("btnSound");
   function paintSoundBtn() {
     btnSound.innerHTML = soundOn
@@ -4802,12 +4980,13 @@
       : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5 h3.5 L12 5.5 v13 L7.5 14.5 H4 z" fill="currentColor"/><path d="M16 9.5 l5 5 M21 9.5 l-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
     btnSound.classList.toggle("off", !soundOn);
     btnSound.setAttribute("aria-pressed", soundOn ? "true" : "false");
+    btnSound.setAttribute("aria-label", soundOn ? "Sonido: activado" : "Sonido: apagado");
   }
   btnSound.addEventListener("click", function () {
     soundOn = !soundOn;
     try { localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0"); } catch (e) {}
     paintSoundBtn();
-    if (soundOn) { Snd.unlock(); Snd.place(); }
+    if (soundOn) { Snd.unlock(); Snd.click(); }
   });
   paintSoundBtn();
 
@@ -4914,7 +5093,8 @@
       { transform: "translate(-50%,-58%) scale(1) rotate(0deg)", opacity: 1, offset: 0.8 },
       { transform: "translate(-50%,-75%) scale(1.1) rotate(0deg)", opacity: 0 }
     ], { duration: 1100, easing: "ease-out", fill: "both" });
-    Snd.combo(k);
+    // v56: la fanfarria entra cuando ya suenan las campanitas de las líneas
+    try { Snd.combo(k, 0.42); } catch (e) {}
   }
   function shakeBoard(px) {
     if (!boardEl.animate) return;
@@ -4984,7 +5164,7 @@
         }
         if (!sym && v) sym = v.symbol;
       }
-      if (sym) setTimeout(function (s, n, st) { return function () { Snd.group(s, n, st / 1000); }; }(sym, g.length, step), gi * 45);
+      if (sym) setTimeout(function (s, n, st) { return function () { Snd.group(s, n, st / 1000); if (s === "star") Snd.ding(); }; }(sym, g.length, step), gi * 45); // v56: la Gorda hace din-din
     }
     for (let i = 0; i < m.stoneCells.length; i++) {
       const p = m.stoneCells[i];
@@ -5252,6 +5432,7 @@
     updateStorm();
     renderBoard();
     renderTray();
+    try { Snd.tray(); } catch (e) {}
     tutoPlaced = 0;
     maybeShowTuto();
   }
@@ -6178,7 +6359,7 @@
     renderTray();
     playSalvadoFx(idx);
     showBanner("¡Salvado!", "save");
-    try { beep("combo"); buzz([20, 30, 40]); } catch (e) {}
+    try { beep("ding"); buzz([20, 30, 40]); } catch (e) {}
     const reduced = typeof vinePrefersReduced === "function" && vinePrefersReduced();
     await sleep(reduced ? 80 : 480);
     return true;
@@ -6201,6 +6382,7 @@
       if (sp.vine) cellEls[sp.vine.r][sp.vine.c].classList.add("vinegrow");
       (extra.vines || []).forEach(function (v) { cellEls[v.r][v.c].classList.add("vinegrow"); });
       renderTray();
+      try { Snd.tray(); } catch (e) {}
       if (!pendingGust && (L.gustDue(score, windState) || (stormState(score).phase === "storm" && Math.random() < 0.22))) {
         scheduleGust();
       }
@@ -6679,7 +6861,7 @@
     const lv = currentLevel();
     const stars = starsFor(lv, levelStats.moves);
     saveStars(lv.id, stars);
-    beep("combo");
+    beep("record");
     buzz([20, 40, 20, 40, 80]);
     await sleep(180);
     let starHtml = '<div class="stars-row">';
@@ -6755,7 +6937,7 @@
     tray[index] = null;
     renderBoard();
     renderTray();
-    beep("place");
+    try { Snd.place(placed.length); } catch (e) {}
     buzz(10);
     if (tutoOpen) {
       tutoPlaced++;
@@ -6830,6 +7012,7 @@
 
     const msg = praise(m.groups, nLines);
     if (msg) showToast(msg);
+    if (msg && msg !== "¡Bien!" && events < 2) { try { Snd.combo(2); } catch (e) {} } // v56: elogio sin combo
 
     if (pendingGust) await doGust();
     const spreads = tickVineSpreads(trappedBefore);
@@ -6919,9 +7102,11 @@
     const anyOn = cells.some(function (p) { return L.inBounds(p.r, p.c); });
     const posKey = at.r + "," + at.c + "," + (anyOn ? 1 : 0) + "," + drag.index;
     if (posKey === drag.posKey) return;
+    const firstPos = drag.posKey == null; // v56: al levantarse ya suena «coger»; sin toc encima
     drag.posKey = posKey;
     if (!anyOn) { renderBoard(); clearLineGlow(); drag.target = null; return; }
     const ok = L.canPlace(board, piece, at.r, at.c);
+    if (!firstPos) { try { Snd.drag(ok); } catch (e) {} } // v56: "toc" seco al cambiar de casilla sobre el tablero
     const hint = ok ? computeClearHint(piece, at.r, at.c) : null;
     renderBoard(cells, ok, hint);
     showLineGlow(hint && hint._lines);
@@ -7081,7 +7266,7 @@
     return el;
   }
   // la pieza vuelve volando a su hueco mientras encoge
-  function flyBackToSlot(info) {
+  function flyBackToSlot(info, after) {
     const ghost = info.ghost;
     const slot = trayEl.querySelector('.slot[data-i="' + info.index + '"]');
     const mini = ghost && ghost.querySelector(".mini");
@@ -7094,6 +7279,7 @@
       }
       if (slot) slot.classList.remove("dragging");
       renderTray();
+      if (after) after();
     };
     if (!ghost || !slot || !mini || !ghost.animate || reducedMotion()) { dragLayer.innerHTML = ""; done(); return; }
     const gr = mini.getBoundingClientRect();
@@ -7110,6 +7296,28 @@
     a.onfinish = function () { flyBack = null; done(); };
   }
   let flyBack = null;
+  // v55 giro limpio: el remolino se apaga en un suspiro en vez de cortarse
+  function fadePickSwirl(ms) {
+    const el = pickSwirlEl;
+    if (!el) return;
+    pickSwirlEl = null;
+    if (!el.animate || reducedMotion()) { el.remove(); return; }
+    const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms || 90, easing: "ease-out", fill: "forwards" });
+    a.onfinish = function () { if (el.parentNode) el.remove(); };
+    setTimeout(function () { if (el.parentNode) el.remove(); }, (ms || 90) + 80);
+  }
+  // v55 giro limpio: la pieza no se levanta hasta que el dedo se mueve un poco (LIFT_PX)
+  // o la mantienes quieta LIFT_HOLD_MS; un toque rápido solo gira la pieza en la bandeja.
+  const LIFT_PX = 4, LIFT_HOLD_MS = 120;
+  let liftTimer = 0, liftLog = null;
+  function clearLiftTimer() { if (liftTimer) { clearTimeout(liftTimer); liftTimer = 0; } }
+  function liftNow(info, pt, why) {
+    clearLiftTimer();
+    if (!info || drag !== info || info.moved) return;
+    try { Snd.pick(); } catch (err) {}
+    beginDragFrom(info, pt);
+    liftLog = { why: why, ms: Math.round(performance.now() - info.t0), d: Math.round(info.maxD || 0) };
+  }
   // v54 al toque: qué cuenta como «toque para girar»
   const TAP_MS = 220, TAP_PX = 10;
   let lastTap = null;
@@ -7140,10 +7348,13 @@
       t0: performance.now(),
       maxD: 0
     };
-    // v54 al toque: sin umbral; la pieza crece y sube sobre el tablero en cuanto el dedo la toca.
-    // (las chispitas de la v52 se quitan: se solapaban con el remolino del hueco)
-    try { Snd.pick(); } catch (err) {}
-    beginDragFrom(drag, pt);
+    // v55 giro limpio: aún no se levanta. Se levanta al primer movimiento (> LIFT_PX) o tras
+    // LIFT_HOLD_MS quieta; si sueltas antes es un toque y solo gira (sin destello en el tablero).
+    clearLiftTimer();
+    liftLog = null;
+    slot.classList.add("pressing");
+    const info = drag;
+    liftTimer = setTimeout(function () { liftTimer = 0; liftNow(info, { x: info.startX, y: info.startY }, "hold"); }, LIFT_HOLD_MS);
   }
 
   function onMove(e) {
@@ -7153,7 +7364,11 @@
     const dx = pt.x - drag.startX, dy = pt.y - drag.startY;
     const d = Math.sqrt(dx * dx + dy * dy);
     if (d > drag.maxD) drag.maxD = d;
-    if (!drag.moved) return;
+    if (!drag.moved) {
+      if (d <= LIFT_PX) return;
+      liftNow(drag, pt, "move");
+      if (!drag || !drag.moved) return;
+    }
     e.preventDefault();
     placeGhost(pt.x, pt.y);
     schedulePreview();
@@ -7165,9 +7380,14 @@
     if (e) e.preventDefault();
     const info = drag;
     if (info.slot) info.slot.classList.remove("pressing");
+    clearLiftTimer();
     if (!info.moved) {
+      // v55: toque rápido → gira en su sitio; nunca se levanta ni se coloca
       drag = null;
-      if (!cancelled) rotateTrayPiece(info.index, info.slot);
+      if (!cancelled) {
+        lastTap = { index: info.index, ms: Math.round(performance.now() - (info.t0 || 0)), d: Math.round(info.maxD || 0), lifted: false };
+        rotateTrayPiece(info.index, info.slot);
+      }
       return;
     }
     cancelPreview();
@@ -7183,11 +7403,10 @@
       const dEnd = Math.sqrt(ddx * ddx + ddy * ddy);
       const tapDur = performance.now() - (info.t0 || 0);
       if (tapDur < TAP_MS && Math.max(info.maxD || 0, dEnd) < TAP_PX) {
-        dragLayer.innerHTML = "";
-        removePickSwirl();
-        if (slot) slot.classList.remove("dragging", "pressing");
-        lastTap = { index: info.index, ms: Math.round(tapDur), d: Math.round(Math.max(info.maxD || 0, dEnd)) };
-        rotateTrayPiece(info.index, slot);
+        // v55 giro limpio: ya se había levantado → vuelve suave a su hueco y allí gira
+        fadePickSwirl(90);
+        lastTap = { index: info.index, ms: Math.round(tapDur), d: Math.round(Math.max(info.maxD || 0, dEnd)), lifted: true };
+        flyBackToSlot(info, function () { rotateTrayPiece(info.index); });
         return;
       }
     }
@@ -7198,6 +7417,7 @@
     } else {
       // v53: fuera o sitio inválido → el remolino se apaga y la pieza vuelve volando a su hueco
       removePickSwirl();
+      try { Snd.whoosh(); } catch (e) {}
       flyBackToSlot(info);
     }
   }
@@ -7282,7 +7502,9 @@
     setPieceStyle: applyPieceStyle,
     getProgress: function () { return Object.assign({}, progress); },
     setProgress: function (p) { progress = p || {}; try { localStorage.setItem(PROG_KEY, JSON.stringify(progress)); } catch (e) {} },
-    sound: { isOn: function () { return soundOn; }, hasContext: function () { return Snd.hasContext(); }, state: function () { return Snd.ctxState(); }, unlock: function () { Snd.unlock(); } },
+    sound: { isOn: function () { return soundOn; }, hasContext: function () { return Snd.hasContext(); }, state: function () { return Snd.ctxState(); }, unlock: function () { Snd.unlock(); },
+      nodes: function () { return Snd.nodes(); }, clearLog: function () { Snd.clearLog(); }, dragAsked: function () { return Snd.dragAsked(); }, synth: SYNTH },
+    get soundLog() { return Snd.log(); },
     stormState: function () { return stormState(score); },
     stormName: function () { return stormNameFromState(stormState(score)); },
     stormParams: function () { return stormParams(score); },
@@ -7343,8 +7565,11 @@
       return { x: r.left, y: r.top, dots: pickSwirlEl._dots, color: pickSwirlEl.style.getPropertyValue("--sw") };
     },
     isFlyingBack: function () { return !!flyBack; },
-    timings: function () { return { grow: GROW_MS, ret: RETURN_MS, swirl: SWIRL_MS, liftCells: LIFT_CELLS, tapMs: TAP_MS, tapPx: TAP_PX }; },
+    timings: function () { return { grow: GROW_MS, ret: RETURN_MS, swirl: SWIRL_MS, liftCells: LIFT_CELLS, tapMs: TAP_MS, tapPx: TAP_PX, liftPx: LIFT_PX, liftHoldMs: LIFT_HOLD_MS }; },
     lastTap: function () { return lastTap; },
+    liftLog: function () { return liftLog; },
+    isPressing: function () { return !!(drag && !drag.moved); },
+    lastRotateAt: function () { return lastRotateAt; },
     swirlSize: function () { return pickSwirlEl ? { cloud: pickSwirlEl._cloud, star: pickSwirlEl._star, dur: pickSwirlEl._dur, dots: pickSwirlEl._dots } : null; },
     boardRect: function () { const r = boardEl.getBoundingClientRect(); return { top: r.top, left: r.left, bottom: r.bottom, right: r.right }; },
     // v53 reparto: lectura para pruebas
