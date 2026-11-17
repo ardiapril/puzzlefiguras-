@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v56 sonidos -->
+<!-- figuras v57 tormenta -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -1347,18 +1347,49 @@
     opacity: 0;
     background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255, 224, 96, .48), rgba(224, 176, 80, .14) 45%, transparent 70%);
   }
-  #lightningFlash.boom { animation: boltflash .32s ease-out; }
+  /* v57: un solo destello suave (antes doble), ≤ 0,24 s, sin parpadeo */
+  #lightningFlash.boom { animation: boltflash .24s ease-out; }
   #lightningFlash.hold { opacity: .3; animation: none; }
   @keyframes boltflash {
     0% { opacity: 0; }
-    12% { opacity: .5; }
-    28% { opacity: .14; }
-    48% { opacity: .32; }
+    18% { opacity: .42; }
     100% { opacity: 0; }
   }
+  /* v57 tormenta: el cielo se aclara un instante (blanco azulado, suave) detrás del tablero */
+  #skyFlash {
+    position: absolute; inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    background:
+      radial-gradient(ellipse 110% 65% at 50% 8%, rgba(214, 228, 255, .62), rgba(160, 186, 240, .22) 50%, transparent 82%),
+      rgba(150, 175, 230, .10);
+  }
+  #skyFlash.flash { animation: skyflash .24s ease-out; }
+  #skyFlash.hold { opacity: .34; animation: none; }
+  @keyframes skyflash {
+    0% { opacity: 0; }
+    16% { opacity: .5; }
+    100% { opacity: 0; }
+  }
+  /* v57 tormenta: lluvia fina y difusa por encima de todo el juego, muy translúcida (no tapa
+     las piezas) y sin recibir toques (pointer-events: none) */
+  #rainSoft {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1.5s ease;
+    filter: blur(.45px);
+    background: linear-gradient(180deg, rgba(150, 172, 225, .05), rgba(150, 172, 225, .015) 55%, rgba(150, 172, 225, .05));
+  }
+  #rainSoft.on { opacity: 1; }
   @media (prefers-reduced-motion: reduce) {
     #lightningFlash.boom { animation: none; opacity: .12; }
+    #skyFlash.flash { animation: none; opacity: 0; }
     #weather { transition: opacity .4s ease; }
+    #rainSoft { transition: opacity .6s ease; }
   }
 
 
@@ -2319,6 +2350,7 @@
     <div class="shafts"><i></i><i></i><i></i><i></i><i></i></div>
     <div id="flies"></div>
     <div class="storm-veil" aria-hidden="true"></div>
+    <div id="skyFlash" aria-hidden="true"></div>
     <canvas id="weather" aria-hidden="true"></canvas>
     <div id="lightningFlash" aria-hidden="true"></div>
     <div class="vignette"></div>
@@ -2422,6 +2454,7 @@
     </div>
   </div>
   <canvas id="burstCanvas" aria-hidden="true"></canvas>
+  <canvas id="rainSoft" aria-hidden="true"></canvas>
   <div id="dragLayer"></div>
   <div id="overlay" class="hidden" role="dialog" aria-modal="true"></div>
 
@@ -3596,6 +3629,7 @@
   }
   function goMenu() {
     clearValleyClose();
+    stormAmbienceOff();
     mode = "menu";
     updateMenuBest();
     showScreen("menu");
@@ -4860,14 +4894,169 @@
         noise(b, t + 0.08, 0.7, 0.12, "highpass", 800, 2400, 0.7, { att: 0.08 });
         tone(b, t, 220, "sine", 0.55, 0.05, { glide: 2.8, glideT: 0.5 });
         tone(b, t, 140, "sine", 0.4, 0.04, { glide: 0.5 });
-      }
+      },
+      // ---- v57 tormenta: ambiente. Todo sintetizado aquí (ruido filtrado), nada grabado. ----
+      // Lluvia: lecho continuo en bucle (siseo + repiqueteo de gotitas + rumor grave), muy bajito
+      // para que los sonidos del juego queden siempre encima. Devuelve un "handle" para pararla.
+      rainStart: function (b, t, k, fadeS) { return rainStart(b, t, k, fadeS); },
+      rainStop: function (b, h, t, fadeS) { rainStop(b, h, t, fadeS); },
+      // Trueno: chasquido al principio si el rayo cae cerca + retumbo grave irregular que se aleja
+      thunder: function (b, t, k, close) { thunder(b, t, k, close); }
     };
+    // bus de ambiente (lluvia + truenos): una ganancia propia que va al master, para apagarla de golpe
+    function amb(b) {
+      if (!b.amb) { b.amb = b.c.createGain(); b.amb.gain.value = 1; b.amb.connect(b.out); }
+      return b.amb;
+    }
+    // buffer que se puede repetir en bucle sin "clic": el final se funde con el principio
+    function loopable(c, d) {
+      const sr = c.sampleRate, x = Math.floor(sr * 0.05), n = d.length - x;
+      const buf = c.createBuffer(1, n, sr), o = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) o[i] = d[i];
+      for (let i = 0; i < x; i++) { const w = i / x; o[i] = d[i] * w + d[n + i] * (1 - w); }
+      // nivel fijo (RMS 0,25) para que cada capa suene igual de fuerte en cualquier móvil
+      let ss = 0, mean = 0;
+      for (let i = 0; i < n; i++) mean += o[i];
+      mean /= n;
+      for (let i = 0; i < n; i++) { o[i] -= mean; ss += o[i] * o[i]; }
+      const g = 0.25 / Math.max(1e-6, Math.sqrt(ss / n));
+      for (let i = 0; i < n; i++) o[i] *= g;
+      return buf;
+    }
+    function rainBuffers(b) {
+      if (b.rain) return b.rain;
+      const c = b.c, sr = c.sampleRate, len = Math.floor(sr * 2.6);
+      // siseo: ruido blanco suavizado
+      const hd = new Float32Array(len);
+      let lp = 0;
+      for (let i = 0; i < len; i++) { lp += ((Math.random() * 2 - 1) - lp) * 0.55; hd[i] = lp; }
+      // repiqueteo: gotitas sueltas (clics muy cortos con caída) a ritmo irregular
+      const pd = new Float32Array(len);
+      for (let n = 0; n < 340; n++) {
+        const at = Math.floor(Math.random() * (len - 900));
+        const a = 0.25 + Math.random() * 0.75, dl = 120 + Math.floor(Math.random() * 500);
+        for (let j = 0; j < dl; j++) pd[at + j] += (Math.random() * 2 - 1) * a * Math.exp(-j / (dl * 0.22));
+      }
+      // rumor grave: ruido marrón (fondo lejano de lluvia)
+      const ld = new Float32Array(len);
+      let br = 0;
+      for (let i = 0; i < len; i++) { br = (br + (Math.random() * 2 - 1) * 0.04) * 0.995; ld[i] = br * 6; }
+      b.rain = { hiss: loopable(c, hd), pat: loopable(c, pd), low: loopable(c, ld) };
+      return b.rain;
+    }
+    function brownBuffer(b) {
+      if (b.brown) return b.brown;
+      const c = b.c, sr = c.sampleRate, len = Math.floor(sr * 3.2);
+      const d = new Float32Array(len);
+      let br = 0;
+      for (let i = 0; i < len; i++) { br = (br + (Math.random() * 2 - 1) * 0.06) * 0.996; d[i] = br * 5; }
+      b.brown = loopable(c, d);
+      return b.brown;
+    }
+    function loopSrc(b, buf, t, rate) {
+      const s = b.c.createBufferSource();
+      s.buffer = buf; s.loop = true;
+      if (rate) s.playbackRate.value = rate;
+      s.start(t, Math.random() * (buf.duration - 0.1));
+      b.nodes++;
+      return s;
+    }
+    function rainStart(b, t, k, fadeS) {
+      const c = b.c, bufs = rainBuffers(b);
+      k = Math.max(0.3, Math.min(1, k || 0.6));
+      const fade = fadeS == null ? 1.5 : fadeS;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(1, t + fade);
+      g.connect(amb(b));
+      const nodes = [];
+      // siseo: paso alto + paso bajo con un vaivén lento de brillo
+      const s1 = loopSrc(b, bufs.hiss, t), hp = c.createBiquadFilter(), lp = c.createBiquadFilter(), g1 = c.createGain();
+      hp.type = "highpass"; hp.frequency.value = 520; hp.Q.value = 0.5;
+      lp.type = "lowpass"; lp.frequency.value = 3600; lp.Q.value = 0.4;
+      g1.gain.value = 0.075 * k;
+      s1.connect(hp); hp.connect(lp); lp.connect(g1); g1.connect(g);
+      const lfo1 = c.createOscillator(), lfo1g = c.createGain();
+      lfo1.frequency.value = 0.09; lfo1g.gain.value = 700;
+      lfo1.connect(lfo1g); lfo1g.connect(lp.frequency); lfo1.start(t);
+      // repiqueteo de gotas: banda media-alta, con su propio vaivén de volumen
+      const s2 = loopSrc(b, bufs.pat, t, 0.97 + Math.random() * 0.06), bp = c.createBiquadFilter(), g2 = c.createGain();
+      bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 0.7;
+      g2.gain.value = 0.045 * k;
+      s2.connect(bp); bp.connect(g2); g2.connect(g);
+      const lfo2 = c.createOscillator(), lfo2g = c.createGain();
+      lfo2.frequency.value = 0.053; lfo2g.gain.value = 0.018 * k;
+      lfo2.connect(lfo2g); lfo2g.connect(g2.gain); lfo2.start(t);
+      // segunda capa de gotitas, más lenta y grave (gotas grandes sobre hojas)
+      const s3 = loopSrc(b, bufs.pat, t, 0.62), bp3 = c.createBiquadFilter(), g3 = c.createGain();
+      bp3.type = "bandpass"; bp3.frequency.value = 1100; bp3.Q.value = 0.8;
+      g3.gain.value = 0.03 * k;
+      s3.connect(bp3); bp3.connect(g3); g3.connect(g);
+      // rumor grave lejano
+      const s4 = loopSrc(b, bufs.low, t), lp4 = c.createBiquadFilter(), g4 = c.createGain();
+      lp4.type = "lowpass"; lp4.frequency.value = 420; lp4.Q.value = 0.5;
+      g4.gain.value = 0.05 * k;
+      s4.connect(lp4); lp4.connect(g4); g4.connect(g);
+      nodes.push(s1, s2, s3, s4, lfo1, lfo2);
+      return { g: g, nodes: nodes, k: k };
+    }
+    function rainStop(b, h, t, fadeS) {
+      if (!h) return;
+      const fade = fadeS == null ? 1.5 : fadeS;
+      try {
+        h.g.gain.cancelScheduledValues(t);
+        h.g.gain.setValueAtTime(Math.max(0.0001, h.g.gain.value), t);
+        h.g.gain.linearRampToValueAtTime(0.0001, t + fade);
+      } catch (e) {}
+      h.nodes.forEach(function (n) { try { n.stop(t + fade + 0.1); } catch (e) {} });
+    }
+    function thunder(b, t, k, close) {
+      const c = b.c, out = amb(b);
+      k = Math.max(0.25, Math.min(1, k || 0.7));
+      // chasquido (solo si el rayo está cerca): ruido agudo muy corto + crujidos que bajan
+      if (close) {
+        noise(b, t, 0.07, 0.22 * k, "highpass", 2200, 0, 0.7, { att: 0.001, out: out, rev: 0.3 });
+        noise(b, t + 0.005, 0.32, 0.2 * k, "bandpass", 3200, 520, 0.9, { att: 0.003, out: out, rev: 0.35 });
+        for (let i = 0; i < 5; i++) {
+          const tt = t + 0.03 + Math.random() * 0.28;
+          noise(b, tt, 0.03 + Math.random() * 0.05, (0.06 + Math.random() * 0.08) * k, "bandpass", 900 + Math.random() * 2200, 0, 1.4, { att: 0.001, out: out });
+        }
+      }
+      // retumbo: ruido marrón muy filtrado con golpes irregulares que se van apagando
+      const dur = (close ? 2.6 : 3.4) + Math.random() * 1.2;
+      const st0 = close ? t + 0.04 : t;
+      const src = loopSrc(b, brownBuffer(b), st0, 0.9 + Math.random() * 0.2);
+      const f = c.createBiquadFilter(), f2 = c.createBiquadFilter(), g = c.createGain();
+      f.type = "lowpass"; f.Q.value = 0.6;
+      f.frequency.setValueAtTime(close ? 420 : 240, st0);
+      f.frequency.exponentialRampToValueAtTime(close ? 110 : 90, st0 + dur);
+      f2.type = "highpass"; f2.frequency.value = 28;
+      const peak = (close ? 0.46 : 0.42) * k;
+      g.gain.setValueAtTime(0.0001, st0);
+      g.gain.linearRampToValueAtTime(peak, st0 + (close ? 0.06 : 0.45));
+      // golpes del retumbo (cada uno un poco más flojo)
+      let tt = st0 + (close ? 0.25 : 0.7), lvl = peak;
+      while (tt < st0 + dur - 0.5) {
+        lvl *= 0.72 + Math.random() * 0.2;
+        g.gain.linearRampToValueAtTime(lvl * (0.45 + Math.random() * 0.2), tt);
+        tt += 0.12 + Math.random() * 0.25;
+        g.gain.linearRampToValueAtTime(lvl, tt);
+        tt += 0.18 + Math.random() * 0.35;
+      }
+      g.gain.exponentialRampToValueAtTime(0.0001, st0 + dur);
+      src.connect(f); f.connect(f2); f2.connect(g); g.connect(out);
+      const rs = c.createGain(); rs.gain.value = 0.25; g.connect(rs); rs.connect(b.rev);
+      src.stop(st0 + dur + 0.05);
+      // cuerpo grave (un tono muy bajo que cae), le da peso en altavoces buenos
+      tone(b, st0, close ? 62 : 48, "sine", Math.min(1.6, dur * 0.5), (close ? 0.16 : 0.09) * k, { glide: 0.62, att: close ? 0.02 : 0.3, out: out });
+    }
   })();
   const Snd = (function () {
     let ctx = null, bus = null, failed = false;
     const log = [];      // v56: registro de solo lectura para las pruebas ({name, t, played, ...})
     let lastDrag = -1e9, dragAsked = 0;
     const DRAG_GAP_MS = 45;
+    let rainH = null, rainWant = 0;   // v57: lluvia en bucle (handle) y su intensidad deseada
     function ensure() {
       if (ctx || failed) return ctx;
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -4946,8 +5135,45 @@
       group: function (symbol, n, stagger) { fire("group", 0.005, function (b, t) { SYNTH.group(b, t, symbol, n, stagger); }, { symbol: symbol, n: n }); },
       stone: function () { fire("stone", 0.005, SYNTH.stone); },
       vine: function () { fire("vine", 0.005, SYNTH.vine); },
-      wind: function () { fire("wind", 0.005, SYNTH.wind); }
+      wind: function () { fire("wind", 0.005, SYNTH.wind); },
+      // v57 tormenta: lluvia en bucle (se enciende/apaga con la tormenta y con el botón 🔊)
+      rain: function (on, k) {
+        const want = on ? Math.max(0.3, Math.min(1, k || 0.6)) : 0;
+        const was = rainWant;
+        rainWant = want;
+        if (!!want !== !!was) {
+          log.push({ name: want ? "rain_on" : "rain_off", t: Math.round(performance.now()), played: !!(want ? soundOn : rainH), info: { k: Math.round(want * 100) / 100 } });
+        }
+        syncRain(1.5);
+      },
+      syncRain: function (fadeS) { syncRain(fadeS); },
+      rainState: function () { return { want: rainWant, playing: !!rainH, k: rainH ? rainH.k : 0 }; },
+      thunder: function (k, close, delayS) {
+        return fire("thunder", delayS || 0, function (b, t) { SYNTH.thunder(b, t, k, close); }, { k: Math.round((k || 0) * 100) / 100, close: !!close, delay: Math.round((delayS || 0) * 1000) });
+      },
+      resumeForPageShow: function () {
+        try { if (ctx && soundOn && rainWant && ctx.state === "suspended") ctx.resume(); } catch (e) {}
+      }
     };
+    function syncRain(fadeS) {
+      const want = rainWant > 0 && soundOn;
+      if (want && !rainH) {
+        const b = ready();
+        if (b) { try { rainH = SYNTH.rainStart(b, b.c.currentTime + 0.01, rainWant, fadeS); } catch (e) { rainH = null; } }
+      } else if (!want && rainH) {
+        try { SYNTH.rainStop(bus, rainH, bus.c.currentTime, fadeS); } catch (e) {}
+        rainH = null;
+      }
+      // el bus de ambiente sigue al botón 🔊 (silencia también truenos ya programados)
+      if (bus && bus.amb) {
+        try {
+          const t = bus.c.currentTime;
+          bus.amb.gain.cancelScheduledValues(t);
+          bus.amb.gain.setValueAtTime(bus.amb.gain.value, t);
+          bus.amb.gain.linearRampToValueAtTime(soundOn ? 1 : 0, t + 0.12);
+        } catch (e) {}
+      }
+    }
   })();
   function beep(kind) {
     try {
@@ -4966,6 +5192,7 @@
   });
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") Snd.suspendForPageHide();
+    else Snd.resumeForPageShow();
   });
   // v56: clic suave en todos los botones (el de sonido suena él solo al encenderse)
   document.addEventListener("click", function (e) {
@@ -4987,6 +5214,7 @@
     try { localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0"); } catch (e) {}
     paintSoundBtn();
     if (soundOn) { Snd.unlock(); Snd.click(); }
+    try { Snd.syncRain(soundOn ? 0.8 : 0.2); } catch (e) {}
   });
   paintSoundBtn();
 
@@ -5521,6 +5749,13 @@
     if (!st || st.phase === "none") return "none";
     return st.phase + "-" + st.cycle;
   }
+  // v57: fin de partida / menú: se apaga la tormenta (lluvia, cielo y sonido) con su fundido
+  function stormAmbienceOff() {
+    const atmos = document.getElementById("atmos");
+    if (atmos) atmos.classList.remove("storm");
+    setWeather(false, 0);
+    lastStormKey = "none";
+  }
   function updateStorm() {
     if (!stormBadge || !stormLabel) return;
     const st = stormState(score);
@@ -5822,6 +6057,11 @@
     opts = opts || {};
     const flash = document.getElementById("lightningFlash");
     const quiet = reducedMotion();
+    // v57: nunca dos relámpagos seguidos (mínimo 3 s), salvo los forzados de las pruebas
+    const now0 = performance.now();
+    if (!opts.hold && !opts.force && now0 - (weather.lastFlash || -1e9) < 3000) { scheduleNextFlash(); return false; }
+    weather.lastFlash = now0;
+    stormStrike(opts);
     sizeWeather();
     weather.bolts = [makeBolt()];
     if (opts.hold) {
@@ -5838,12 +6078,14 @@
       setTimeout(function () { flash.style.opacity = ""; }, 200);
     }
     scheduleNextFlash();
+    return true;
   }
   function scheduleNextFlash() {
+    // v57: un relámpago cada 8–18 s al azar (algo más a menudo en tormentas altas, nunca < 7 s)
     const c = Math.min(Math.max(weather.cycle, 1), STORM_CAP);
     const quiet = reducedMotion();
-    const min = quiet ? 9000 : Math.max(2400, 7200 - c * 700);
-    const span = quiet ? 8000 : Math.max(1800, 5000 - c * 400);
+    const min = quiet ? 12000 : Math.max(7000, 8000 - (c - 1) * 200);
+    const span = quiet ? 10000 : 10000 - (c - 1) * 400;
     weather.nextFlash = performance.now() + min + Math.random() * span;
   }
   function weatherRainSpeed() {
@@ -5882,6 +6124,11 @@
     }
     if (weather.on && t > weather.nextFlash && !reducedMotion() && t > weather.holdUntil) {
       flashLightning();
+    } else if (weather.on && t > weather.nextFlash && reducedMotion()) {
+      // movimiento reducido: sin destellos, solo un trueno lejano de vez en cuando
+      try { Snd.thunder(0.45, false, 0); } catch (e) {}
+      ambience.strikes.push({ t: Math.round(t), flash: false, thunder: true, delay: 0, close: false });
+      scheduleNextFlash();
     }
     if (weather.holdUntil && t > weather.holdUntil) {
       weather.holdUntil = 0;
@@ -5901,6 +6148,7 @@
   function setWeather(on, cycle) {
     weather.cycle = cycle || 1;
     const want = !!on;
+    setStormAmbience(want, weather.cycle);
     if (want && !weather.on) {
       weather.on = true;
       seedDrops(weatherDropCount(weather.cycle));
@@ -5942,6 +6190,202 @@
     flashLightning({ hold: hold || 700 });
     if (!weather.raf) weather.raf = requestAnimationFrame(weatherTick);
   }
+
+  // ---- v57 tormenta: ambiente (lluvia fina y difusa + cielo que se aclara + truenos) ----
+  // Solo decoración: no toca la lógica, el reparto ni los toques (el lienzo no recibe eventos).
+  const ambience = { on: false, cycle: 0, startTimer: 0, strikes: [] };
+  const rainSoft = { on: false, drops: [], raf: 0, last: 0, w: 0, h: 0, dpr: 1, flashAt: -1e9, offAt: 0, cycle: 1 };
+  function rainSoftCanvas() { return document.getElementById("rainSoft"); }
+  function rainSoftCount(cycle) {
+    const c = Math.min(Math.max(cycle || 1, 1), STORM_CAP);
+    return reducedMotion() ? 16 + c * 3 : Math.min(130, 62 + c * 11);
+  }
+  function rainSoftSize() {
+    const cv = rainSoftCanvas();
+    if (!cv) return false;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = window.innerWidth, h = window.innerHeight;
+    const pw = Math.max(1, Math.round(w * dpr)), ph = Math.max(1, Math.round(h * dpr));
+    if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+    rainSoft.w = w; rainSoft.h = h; rainSoft.dpr = dpr;
+    return true;
+  }
+  function rainSoftDrop(anyY) {
+    const quiet = reducedMotion();
+    const w = rainSoft.w, h = rainSoft.h;
+    const len = quiet ? 10 + Math.random() * 10 : 22 + Math.random() * 36;
+    return {
+      x: Math.random() * (w + h * 0.22) - h * 0.22,
+      y: anyY ? Math.random() * h : -len - Math.random() * 60,
+      len: len,
+      sp: quiet ? 0.18 + Math.random() * 0.12 : 0.55 + Math.random() * 0.5,   // px/ms
+      lw: 0.7 + Math.random() * 0.8,
+      b: Math.floor(Math.random() * 3)   // grupo de transparencia (0,1,2)
+    };
+  }
+  function rainSoftSeed(n) {
+    rainSoftSize();
+    rainSoft.drops = [];
+    for (let i = 0; i < n; i++) rainSoft.drops.push(rainSoftDrop(true));
+  }
+  const RAIN_SOFT_A = [0.09, 0.15, 0.22];
+  const RAIN_SLANT = 0.22;
+  function rainSoftTick(t) {
+    rainSoft.raf = 0;
+    const cv = rainSoftCanvas();
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    rainSoftSize();
+    const dt = Math.min(50, Math.max(0, t - (rainSoft.last || t)));
+    rainSoft.last = t;
+    const w = rainSoft.w, h = rainSoft.h, dpr = rainSoft.dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    // al relámpago la lluvia se ilumina un instante
+    const since = t - rainSoft.flashAt;
+    const lit = since >= 0 && since < 260 ? 1 + 1.6 * (1 - since / 260) : 1;
+    // cortinas de agua: bandas anchas inclinadas, muy suaves, que caen despacio (lo "difuso")
+    if (!reducedMotion() || rainSoft.on) {
+      rainSoft.sheetY = ((rainSoft.sheetY || 0) + dt * 0.09) % (h * 1.4);
+      ctx.save();
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate(-Math.atan(RAIN_SLANT));
+      for (let k = 0; k < 3; k++) {
+        const y0 = ((rainSoft.sheetY + k * h * 0.47) % (h * 1.4)) - h * 0.95;
+        const bw = w * (0.35 + 0.15 * k), x0 = -w * 0.75 + k * w * 0.55;
+        const gr = ctx.createLinearGradient(x0, 0, x0 + bw, 0);
+        const a = (0.035 + 0.01 * k) * Math.min(1.6, lit);
+        gr.addColorStop(0, "rgba(170, 190, 235, 0)");
+        gr.addColorStop(0.5, "rgba(170, 190, 235," + a.toFixed(3) + ")");
+        gr.addColorStop(1, "rgba(170, 190, 235, 0)");
+        ctx.fillStyle = gr;
+        ctx.fillRect(x0, y0, bw, h * 0.9);
+      }
+      ctx.restore();
+    }
+    ctx.lineCap = "round";
+    for (let g = 0; g < 3; g++) {
+      const a = Math.min(0.5, RAIN_SOFT_A[g] * lit);
+      // cuerpo de la gota (más claro) y cola (más tenue) para que se vea difusa
+      ctx.strokeStyle = "rgba(205, 220, 248," + a.toFixed(3) + ")";
+      ctx.lineWidth = 1.1 + g * 0.35;
+      ctx.beginPath();
+      for (let i = 0; i < rainSoft.drops.length; i++) {
+        const d = rainSoft.drops[i];
+        if (d.b !== g) continue;
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x - d.len * 0.45 * RAIN_SLANT, d.y - d.len * 0.45);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(190, 206, 240," + (a * 0.45).toFixed(3) + ")";
+      ctx.beginPath();
+      for (let i = 0; i < rainSoft.drops.length; i++) {
+        const d = rainSoft.drops[i];
+        if (d.b !== g) continue;
+        ctx.moveTo(d.x - d.len * 0.45 * RAIN_SLANT, d.y - d.len * 0.45);
+        ctx.lineTo(d.x - d.len * RAIN_SLANT, d.y - d.len);
+      }
+      ctx.stroke();
+    }
+    for (let i = 0; i < rainSoft.drops.length; i++) {
+      const d = rainSoft.drops[i];
+      d.y += d.sp * dt;
+      d.x += d.sp * dt * RAIN_SLANT;
+      if (d.y - d.len > h) {
+        if (rainSoft.on) rainSoft.drops[i] = rainSoftDrop(false);
+        else { rainSoft.drops.splice(i, 1); i--; }
+      }
+    }
+    const fading = !rainSoft.on && t - rainSoft.offAt < 1700;
+    if ((rainSoft.on || fading) && rainSoft.drops.length && document.visibilityState !== "hidden") {
+      rainSoft.raf = requestAnimationFrame(rainSoftTick);
+    } else if (!rainSoft.on) {
+      ctx.clearRect(0, 0, w, h);
+      rainSoft.drops = [];
+    }
+  }
+  function rainSoftStart() {
+    if (!rainSoft.raf && document.visibilityState !== "hidden") {
+      rainSoft.last = 0;
+      rainSoft.raf = requestAnimationFrame(rainSoftTick);
+    }
+  }
+  function setRainSoft(on, cycle) {
+    const cv = rainSoftCanvas();
+    rainSoft.cycle = cycle || 1;
+    if (on) {
+      const need = rainSoftCount(rainSoft.cycle);
+      if (!rainSoft.on || Math.abs(need - rainSoft.drops.length) > 10) rainSoftSeed(need);
+      rainSoft.on = true;
+      if (cv) cv.classList.add("on");
+      rainSoftStart();
+    } else if (rainSoft.on) {
+      rainSoft.on = false;
+      rainSoft.offAt = performance.now();
+      if (cv) cv.classList.remove("on");
+      rainSoftStart();
+    }
+  }
+  function ambienceIntensity(cycle) {
+    const c = Math.min(Math.max(cycle || 1, 1), STORM_CAP);
+    return 0.5 + (c - 1) * 0.08;
+  }
+  function setStormAmbience(on, cycle) {
+    if (on) {
+      const first = !ambience.on;
+      ambience.on = true;
+      ambience.cycle = cycle || 1;
+      setRainSoft(true, ambience.cycle);
+      try { Snd.rain(true, ambienceIntensity(ambience.cycle)); } catch (e) {}
+      if (first) {
+        // un relámpago al empezar la tormenta (tras el cartel)
+        clearTimeout(ambience.startTimer);
+        ambience.startTimer = setTimeout(function () {
+          ambience.startTimer = 0;
+          if (!ambience.on || !weather.on) return;
+          if (reducedMotion()) {
+            try { Snd.thunder(0.5, false, 0.2); } catch (e) {}
+            ambience.strikes.push({ t: Math.round(performance.now()), flash: false, thunder: true, delay: 200, close: false, start: true });
+          } else flashLightning({ start: true, force: true });
+        }, 1100);
+      }
+    } else if (ambience.on) {
+      ambience.on = false;
+      clearTimeout(ambience.startTimer); ambience.startTimer = 0;
+      setRainSoft(false, 0);
+      try { Snd.rain(false); } catch (e) {}
+    }
+  }
+  // un relámpago: el cielo se aclara (azulado) + la lluvia brilla + trueno 0,1–1,5 s después
+  function stormStrike(opts) {
+    opts = opts || {};
+    const quiet = reducedMotion();
+    const now = performance.now();
+    const sky = document.getElementById("skyFlash");
+    if (sky) {
+      if (opts.hold) {
+        sky.className = quiet ? "" : "hold";
+        setTimeout(function () { if (sky.className === "hold") sky.className = ""; }, opts.hold);
+      } else if (!quiet) {
+        sky.className = "";
+        void sky.offsetWidth;
+        sky.className = "flash";
+      }
+    }
+    if (!quiet) rainSoft.flashAt = now;
+    const c = Math.min(Math.max(weather.cycle || 1, 1), STORM_CAP);
+    const close = opts.start ? Math.random() < 0.6 : Math.random() < 0.4;
+    const delay = close ? 0.1 + Math.random() * 0.3 : 0.5 + Math.random() * 1.0;
+    const k = Math.min(1, (close ? 0.75 : 0.5) + Math.random() * 0.2 + (c - 1) * 0.04);
+    let played = false;
+    try { played = Snd.thunder(k, close, delay); } catch (e) {}
+    ambience.strikes.push({ t: Math.round(now), flash: !quiet, thunder: true, played: !!played, delay: Math.round(delay * 1000), close: close, k: Math.round(k * 100) / 100, start: !!opts.start, hold: !!opts.hold });
+    if (ambience.strikes.length > 50) ambience.strikes.splice(0, ambience.strikes.length - 50);
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "hidden" && rainSoft.on) rainSoftStart();
+  });
   if (typeof window !== "undefined") {
     window.addEventListener("resize", function () { sizeWeather(); positionTuto(); });
   }
@@ -6827,6 +7271,7 @@
     if (over || won) return;
     over = true;
     locked = true;
+    stormAmbienceOff();
     beep("over");
     buzz([40, 40, 80]);
     if (mode === "level") {
@@ -7510,6 +7955,20 @@
     stormParams: function () { return stormParams(score); },
     maybeRefill: function () { return maybeRefill(); },
     forceLightning: function (hold) { return forceLightning(hold); },
+    // v57 tormenta: lectura para pruebas
+    ambience: {
+      state: function () {
+        const cv = document.getElementById("rainSoft");
+        return { on: ambience.on, cycle: ambience.cycle, rainOn: rainSoft.on, drops: rainSoft.drops.length, running: !!rainSoft.raf,
+          canvasOn: !!(cv && cv.classList.contains("on")), opacity: cv ? +getComputedStyle(cv).opacity : 0,
+          rain: Snd.rainState(), nextFlashIn: Math.round(weather.nextFlash - performance.now()), reduced: reducedMotion() };
+      },
+      strikes: function () { return ambience.strikes.map(function (e) { return Object.assign({}, e); }); },
+      clearStrikes: function () { ambience.strikes.length = 0; },
+      strike: function () { weather.lastFlash = -1e9; return flashLightning({ force: true }); },
+      tryStrike: function () { return flashLightning({}); },
+      nextFlashSpan: function () { const c = Math.min(Math.max(weather.cycle, 1), STORM_CAP); const q = reducedMotion(); return { min: q ? 12000 : Math.max(7000, 8000 - (c - 1) * 200), max: (q ? 12000 : Math.max(7000, 8000 - (c - 1) * 200)) + (q ? 10000 : 10000 - (c - 1) * 400) }; }
+    },
     getGates: function () { return { stones: GATE.stones, vines: GATE.vines, wind: GATE.wind, stones2: GATE.stones2, stormStart: STORM_START, stormLen: STORM_LEN, calmLen: CALM_LEN }; },
     isSaveUsed: function () { return !!saveUsed; },
     isTutoVisible: function () { return !!tutoOpen; },
