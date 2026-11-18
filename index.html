@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- figuras v57 tormenta -->
+<!-- figuras v58 temblor -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -5307,7 +5307,7 @@
       { transform: "translate(-50%,-190%) scale(0.92)", opacity: 0 }
     ], { duration: 1000, delay: delay || 0, easing: "ease-out", fill: "both" });
   }
-  function popCombo(k) {
+  function popCombo(k, nLines) {
     const wr = fxBox();
     const el = document.createElement("div");
     el.className = "combo";
@@ -5323,18 +5323,68 @@
     ], { duration: 1100, easing: "ease-out", fill: "both" });
     // v56: la fanfarria entra cuando ya suenan las campanitas de las líneas
     try { Snd.combo(k, 0.42); } catch (e) {}
+    // v58: un solo temblor, en el momento del «¡COMBO!», con la cuantía más fuerte
+    shakeForClear(nLines || 0, k);
   }
-  function shakeBoard(px) {
-    if (!boardEl.animate) return;
-    const a = px, b = -px * 0.7, c = px * 0.4;
-    boardEl.animate([
-      { transform: "translate(0px,0px)" },
-      { transform: "translate(" + a + "px," + (-c) + "px) rotate(" + (px * 0.12) + "deg)" },
-      { transform: "translate(" + b + "px," + c + "px) rotate(" + (-px * 0.1) + "deg)" },
-      { transform: "translate(" + c + "px," + (b * 0.5) + "px)" },
-      { transform: "translate(" + (-c * 0.5) + "px,0px)" },
-      { transform: "translate(0px,0px)" }
-    ], { duration: px > 5 ? 380 : 300, easing: "ease-out" });
+  // v58 temblor: solo el tablero, traslación en diagonal, muelle que se apaga; no gira ni escala
+  const SHAKE_COMBO0 = 1.0, SHAKE_COMBO_STEP = 0.4, SHAKE_LINES2 = 1.2, SHAKE_LINES3 = 2.0, SHAKE_CAP = 2.4;
+  const SHAKE_DUR_MIN = 260, SHAKE_DUR_MAX = 300;
+  const shakeLog = [];
+  let boardShakeAnim = null;
+  let lastShake = null;
+  function comboShakePct(k) {
+    if (!(k >= 2)) return 0;
+    return Math.min(SHAKE_CAP, SHAKE_COMBO0 + (k - 2) * SHAKE_COMBO_STEP);
+  }
+  function linesShakePct(nLines) {
+    if (!(nLines >= 2)) return 0;
+    if (nLines === 2) return SHAKE_LINES2;
+    return Math.min(SHAKE_CAP, SHAKE_LINES3 + Math.max(0, nLines - 3) * 0.2);
+  }
+  function shakeDuration(pct) {
+    const t = (Math.min(SHAKE_CAP, Math.max(1, pct)) - 1) / (SHAKE_CAP - 1);
+    return Math.round(SHAKE_DUR_MIN + t * (SHAKE_DUR_MAX - SHAKE_DUR_MIN));
+  }
+  function shakeForClear(nLines, comboK) {
+    const pLines = linesShakePct(nLines);
+    const pCombo = comboShakePct(comboK);
+    const pct = Math.max(pLines, pCombo);
+    if (pct <= 0) return;
+    shakeBoard(pct, (pCombo >= pLines && pCombo > 0) ? "combo" : "lines");
+  }
+  function shakeBoard(pct, reason) {
+    const quiet = reducedMotion();
+    const width = boardEl ? (boardEl.getBoundingClientRect().width || 0) : 0;
+    const px = quiet ? 0 : Math.round(width * (pct / 100) * 100) / 100;
+    const dur = quiet ? 0 : shakeDuration(pct);
+    const rec = { t: Math.round(performance.now()), pct: quiet ? 0 : pct, px: px, reason: quiet ? "reduced" : (reason || "shake"), duration: dur, frames: [] };
+    lastShake = rec;
+    shakeLog.push({ t: rec.t, pct: rec.pct, px: rec.px, reason: rec.reason });
+    if (shakeLog.length > 80) shakeLog.splice(0, shakeLog.length - 80);
+    if (boardShakeAnim) { try { boardShakeAnim.cancel(); } catch (e) {} boardShakeAnim = null; }
+    if (quiet || !boardEl || !boardEl.animate || px <= 0) return;
+    const ax = px, ay = px;
+    const steps = [
+      [0, 0, 0],
+      [0.16, ax, ay],
+      [0.38, -0.62 * ax, -0.62 * ay],
+      [0.58, 0.34 * ax, 0.34 * ay],
+      [0.76, -0.14 * ax, -0.14 * ay],
+      [1, 0, 0]
+    ];
+    const frames = steps.map(function (s) {
+      const x = Math.round(s[1] * 100) / 100, y = Math.round(s[2] * 100) / 100;
+      rec.frames.push({ offset: s[0], x: x, y: y });
+      return { transform: "translate(" + x + "px," + y + "px)", offset: s[0] };
+    });
+    const anim = boardEl.animate(frames, { duration: dur, easing: "linear", fill: "none" });
+    boardShakeAnim = anim;
+    const done = function () {
+      if (boardShakeAnim === anim) boardShakeAnim = null;
+      if (boardEl) boardEl.style.transform = "";
+    };
+    anim.onfinish = done;
+    anim.oncancel = done;
   }
   function sweepLine(isRow, idx, wr, delay) {
     const a = isRow ? cellBox(idx, 0, wr) : cellBox(0, idx, wr);
@@ -5587,7 +5637,6 @@
     lines.rows.forEach(function (r, i) { sweepLine(true, r, wr, i * 40); });
     lines.cols.forEach(function (c, i) { sweepLine(false, c, wr, (lines.rows.length + i) * 40); });
     burstLines(l);
-    shakeBoard(l.nLines >= 2 ? 7 : 4);
     const seen = Object.create(null), delays = [];
     Object.keys(pos).forEach(function (k) { const d = lineCellDelay(pos[k]); if (!seen[d]) { seen[d] = 1; delays.push(d); } });
     delays.sort(function (a, b) { return a - b; });
@@ -7115,7 +7164,7 @@
     }
     const l = L.evalLines(board);
     const gEvents = m.groups.length + l.nLines;
-    if (gEvents >= 2) popCombo(gEvents);
+    if (gEvents >= 2) popCombo(gEvents, l.nLines);
     const gustBrokenStones = (m.stoneCells || []).slice();
     if (l.lineCells.length) {
       const gTrapped = Object.create(null);
@@ -7414,7 +7463,7 @@
     const nLines = l.nLines;
     const linePts = l.pts;
     const events = m.groups.length + nLines;
-    if (events >= 2) popCombo(events);   // combo: varias explosiones en una jugada
+    if (events >= 2) popCombo(events, nLines);   // combo: varias explosiones en una jugada
     const brokenStones = (m.stoneCells || []).slice();
     lineStreak = lineCells.length ? lineStreak + 1 : 0;
     if (lineCells.length || m.groups.length) trioCleared = true; // v53 reparto: racha mala
@@ -7950,6 +7999,10 @@
     sound: { isOn: function () { return soundOn; }, hasContext: function () { return Snd.hasContext(); }, state: function () { return Snd.ctxState(); }, unlock: function () { Snd.unlock(); },
       nodes: function () { return Snd.nodes(); }, clearLog: function () { Snd.clearLog(); }, dragAsked: function () { return Snd.dragAsked(); }, synth: SYNTH },
     get soundLog() { return Snd.log(); },
+    // v58 temblor: lectura para pruebas
+    get shakeLog() { return shakeLog.map(function (e) { return { t: e.t, pct: e.pct, px: e.px, reason: e.reason }; }); },
+    clearShakeLog: function () { shakeLog.length = 0; lastShake = null; },
+    get lastShake() { return lastShake ? { t: lastShake.t, pct: lastShake.pct, px: lastShake.px, reason: lastShake.reason, duration: lastShake.duration, frames: lastShake.frames.slice() } : null; },
     stormState: function () { return stormState(score); },
     stormName: function () { return stormNameFromState(stormState(score)); },
     stormParams: function () { return stormParams(score); },
